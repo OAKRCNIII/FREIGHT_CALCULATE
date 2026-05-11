@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freight Price Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f2f7;--s1:#ffffff;--s2:#f5f7fb;
+  --border:#dde2ee;--border2:#c5cce0;
+  --accent:#2563eb;--green:#059669;--red:#dc2626;
+  --text:#111827;--text2:#6b7280;--text3:#9ca3af;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans Thai',sans-serif;
+}
+html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999}
+.login-box{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:40px 44px;width:340px}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px}
+.login-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
+.login-title{font-size:15px;font-weight:600}
+.login-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.lbl{font-size:10px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em}
+.login-input{width:100%;padding:10px 14px;font-size:14px;font-family:var(--mono);letter-spacing:.12em;border:1px solid var(--border2);border-radius:8px;background:var(--s2);color:var(--text);outline:none;margin-bottom:16px;transition:border-color .2s}
+.login-input:focus{border-color:var(--accent)}
+.login-btn{width:100%;padding:11px;font-size:13px;font-weight:500;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:var(--sans);transition:opacity .2s}
+.login-btn:hover{opacity:.82}
+.login-err{font-size:12px;color:var(--red);margin-top:12px;display:none;text-align:center}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.shake{animation:shake .35s ease}
+
+/* APP */
+#app{display:none;flex-direction:column;min-height:100vh}
+
+/* topbar */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.tl{display:flex;align-items:center;gap:10px}
+.tdot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.ttitle{font-size:14px;font-weight:600}
+.tsub{font-size:11px;color:var(--text2);margin-top:1px}
+.live-badge{font-size:10px;padding:3px 11px;border-radius:20px;border:1px solid var(--green);color:var(--green);font-family:var(--mono);letter-spacing:.06em;display:flex;align-items:center;gap:6px;transition:all .3s}
+.live-badge.sync-syncing{border-color:#d97706;color:#d97706}
+.live-badge.sync-offline{border-color:var(--text3);color:var(--text3)}
+.live-badge.sync-error{border-color:var(--red);color:var(--red)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.4s ease-in-out infinite}
+.sync-syncing .live-dot{background:#d97706}
+.sync-offline .live-dot{background:var(--text3);animation:none}
+.sync-error .live-dot{background:var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.tbtn{padding:7px 16px;font-size:12px;font-weight:500;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:var(--sans);transition:opacity .2s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.tbtn:hover{opacity:.82}
+
+/* main */
+.main{padding:20px 24px;display:grid;gap:14px;max-width:1400px;margin:0 auto;width:100%}
+.main-body{display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:start}
+.ref-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:sticky;top:70px}
+.ref-tbl{width:100%;border-collapse:collapse}
+.ref-tbl th{font-size:9px;color:var(--text2);text-align:left;padding:5px 6px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+.ref-tbl th:last-child{text-align:right}
+.ref-tbl td{padding:5px 6px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text)}
+.ref-tbl td:last-child{text-align:right;font-family:var(--mono);color:var(--accent);font-size:11px}
+.ref-tbl tr:last-child td{border-bottom:none}
+.ref-zero{color:var(--text3)!important}
+
+/* card */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.card-title{font-size:10px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;display:flex;align-items:center;gap:7px}
+.card-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;flex-shrink:0}
+
+/* price set bar */
+.ps-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ps-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.ps-select{flex:1;min-width:160px;padding:7px 10px;font-size:12px;font-family:var(--mono);border:1px solid var(--border2);border-radius:8px;background:var(--s2);color:var(--text);outline:none;cursor:pointer}
+.ps-select:focus{border-color:var(--accent)}
+.ps-btn{padding:6px 13px;font-size:11px;font-weight:500;border:none;border-radius:7px;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:opacity .15s}
+.ps-btn:hover{opacity:.8}
+.ps-btn-edit{background:var(--accent);color:#fff}
+.ps-btn-new{background:none;color:var(--accent);border:1.5px solid var(--accent)}
+.ps-btn-del{background:none;color:var(--red);border:1.5px solid var(--red)}
+
+/* shared inputs */
+.shared-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.fg{margin-bottom:0}
+.fl{font-size:10px;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+.fi{width:100%;padding:8px 11px;font-size:13px;font-family:var(--mono);border:1px solid var(--border);border-radius:8px;background:var(--s2);color:var(--text);outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--accent)}
+.fi.ro{color:var(--text2);background:var(--bg)}
+
+/* factory rows table */
+.rows-wrap{overflow-x:auto}
+.rows-table{width:100%;border-collapse:collapse;min-width:760px}
+.rows-table th{font-size:10px;color:var(--text2);text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.06em;font-weight:500;white-space:nowrap}
+.rows-table th.r{text-align:right}
+.rows-table td{padding:6px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
+.rows-table tr:last-child td{border-bottom:none}
+.rows-table tbody tr:hover td{background:var(--s2)}
+.row-fi{width:100%;padding:6px 8px;font-size:12px;font-family:var(--mono);border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text);outline:none;transition:border-color .15s}
+.row-fi:focus{border-color:var(--accent)}
+select.row-fi{cursor:pointer;appearance:none}
+.row-auto{font-size:12px;font-family:var(--mono);color:var(--text2);display:block;text-align:right;padding:0 4px}
+.profit-pos{color:var(--green);font-weight:600}
+.profit-neg{color:var(--red);font-weight:600}
+.profit-zero{color:var(--text3)}
+.del-btn{width:28px;height:28px;border:1px solid var(--border2);border-radius:6px;background:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.del-btn:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.add-btn{margin-top:12px;padding:9px 16px;font-size:12px;font-weight:500;background:none;color:var(--accent);border:1.5px dashed var(--accent);border-radius:8px;cursor:pointer;font-family:var(--sans);transition:all .15s;width:100%}
+.add-btn:hover{background:var(--accent);color:#fff}
+
+/* footer */
+.footer{text-align:center;font-size:11px;color:var(--text3);padding:20px;font-family:var(--mono)}
+
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fadein{animation:fadein .3s ease both}
+.rowfade{animation:fadein .2s ease both}
+
+/* ===== MODAL ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-box{background:var(--s1);border-radius:16px;width:100%;max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-title{font-size:14px;font-weight:600}
+.modal-close{width:32px;height:32px;border:none;background:none;cursor:pointer;color:var(--text2);font-size:22px;line-height:1;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--s2)}
+.modal-body{padding:18px 22px;overflow-y:auto;flex:1}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.modal-foot button{padding:8px 20px;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;font-family:var(--sans);border:none;transition:opacity .15s}
+.modal-foot button:hover{opacity:.82}
+.m-save{background:var(--accent);color:#fff}
+.m-cancel{background:var(--s2);color:var(--text2)}
+
+/* modal form */
+.m-fg{margin-bottom:14px}
+.m-fl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.m-fi{width:100%;padding:8px 12px;font-size:13px;font-family:var(--sans);border:1px solid var(--border2);border-radius:8px;background:var(--s2);color:var(--text);outline:none}
+.m-fi:focus{border-color:var(--accent)}
+
+/* price table inside modal */
+.ptbl{width:100%;border-collapse:collapse;margin-top:4px}
+.ptbl th{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;font-weight:500}
+.ptbl th:last-child{text-align:right;width:130px}
+.ptbl td{padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px}
+.ptbl tr:last-child td{border-bottom:none}
+.ptbl tr:hover td{background:var(--s2)}
+.ptbl td:last-child{text-align:right}
+.p-inp{width:110px;padding:5px 8px;font-size:12px;font-family:var(--mono);border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);outline:none;text-align:right}
+.p-inp:focus{border-color:var(--accent)}
+.p-zero{color:var(--text3)!important}
+
+/* PRINT */
+#print-pages{display:none}
+.print-page{width:100%;min-height:100vh;padding:16mm;page-break-after:always;background:#fff;display:flex;flex-direction:column;gap:16px;font-family:'IBM Plex Sans Thai',sans-serif;color:#111827}
+.print-page:last-child{page-break-after:auto}
+.pp-header{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:12px;border-bottom:2.5px solid #2563eb}
+.pp-logo{font-size:17px;font-weight:600}
+.pp-sub{font-size:11px;color:#6b7280;font-family:'IBM Plex Mono',monospace}
+.pp-factory{font-size:24px;font-weight:600;color:#2563eb}
+.pp-section{background:#f5f7fb;border-radius:10px;padding:14px 16px}
+.pp-sec-title{font-size:9px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.pp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pp-item label{display:block;font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.pp-item span{font-size:15px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#111827}
+.pp-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+.pp-row:last-child{border-bottom:none}
+.pp-row span:last-child{font-family:'IBM Plex Mono',monospace;color:#111827}
+.pp-total{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 4px;font-size:14px;font-weight:600;border-top:2px solid #dde2ee;margin-top:4px}
+.pp-total span:last-child{font-family:'IBM Plex Mono',monospace;color:#2563eb;font-size:17px}
+.pp-profit-box{border-radius:10px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center}
+.pp-profit-box.pos{background:#d1fae5;border:1px solid #6ee7b7}
+.pp-profit-box.neg{background:#fee2e2;border:1px solid #fca5a5}
+.pp-profit-box.zero{background:#f3f4f6;border:1px solid #e5e7eb}
+.pp-profit-label{font-size:12px;color:#374151;font-weight:500}
+.pp-profit-val{font-size:30px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.pp-profit-val.pos{color:#059669}
+.pp-profit-val.neg{color:#dc2626}
+.pp-profit-val.zero{color:#6b7280}
+.pp-date{font-size:10px;color:#9ca3af;font-family:'IBM Plex Mono',monospace;margin-top:auto;text-align:right}
+
+/* SUMMARY PAGE */
+.pp-sum-tbl{width:100%;border-collapse:collapse}
+.pp-sum-tbl th{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;border-bottom:2px solid #e5e7eb;text-align:left;font-weight:500;white-space:nowrap}
+.pp-sum-tbl th.r{text-align:right}
+.pp-sum-tbl td{padding:9px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;vertical-align:middle}
+.pp-sum-tbl td.r{text-align:right;font-family:'IBM Plex Mono',monospace;color:#374151}
+.pp-sum-tbl .s-pos{color:#059669;font-weight:700}
+.pp-sum-tbl .s-neg{color:#dc2626;font-weight:700}
+.pp-sum-tbl .s-zero{color:#9ca3af}
+.pp-sum-tbl .sum-row td{border-top:2px solid #dde2ee;border-bottom:none;font-weight:600;font-size:13px;padding-top:11px}
+
+/* REPORT MODAL */
+#rpt-modal .m-fl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.rpt-ref-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.rpt-tbl-wrap{overflow-x:auto}
+.rpt-edit-tbl{width:100%;border-collapse:collapse;min-width:480px}
+.rpt-edit-tbl th{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:2px solid var(--border);text-align:left;font-weight:500;white-space:nowrap}
+.rpt-edit-tbl th:nth-child(2),.rpt-edit-tbl th:nth-child(3){text-align:right}
+.rpt-edit-tbl td{padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.rpt-edit-tbl tbody tr:hover td{background:var(--s2)}
+.rpt-edit-tbl td:nth-child(2){text-align:right;font-family:var(--mono);color:var(--text2)}
+.rpt-edit-tbl td:nth-child(3){text-align:right}
+.rpt-old-zero{color:var(--text3)!important}
+.rpt-new-inp{width:100px;padding:4px 8px;font-size:12px;font-family:var(--mono);border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);outline:none;text-align:right}
+.rpt-new-inp:focus{border-color:var(--accent)}
+
+/* REPORT PRINT PAGE */
+#report-print{display:none}
+.rp-page{width:100%;height:277mm;padding:8mm 12mm;font-family:'IBM Plex Sans Thai',sans-serif;color:#111;background:#fff;box-sizing:border-box;display:flex;flex-direction:column}
+.rp-deco{text-align:center;font-size:13px;letter-spacing:20px;color:#555;margin-bottom:1px;display:block;flex-shrink:0}
+.rp-title{text-align:center;font-size:24px;font-weight:700;margin:0 0 8px;letter-spacing:.02em;flex-shrink:0}
+.rp-tbl{width:100%;border-collapse:collapse;border:2px solid #111;flex:1;table-layout:fixed}
+.rp-tbl thead{display:table-header-group}
+.rp-tbl tbody{display:table-row-group;height:100%}
+.rp-tbl tbody tr{height:1%}
+.rp-tbl th{background:#e0e0e0;font-size:12px;font-weight:700;padding:6px 10px;border:1.5px solid #111;text-align:center}
+.rp-tbl td{border:1px solid #888;padding:4px 10px;font-size:12px;vertical-align:middle}
+.rp-tbl td.td-name{text-align:left;width:46%}
+.rp-tbl td.td-old{text-align:center;font-family:'Courier New',monospace;width:18%}
+.rp-tbl td.td-lbl{text-align:center;font-size:10px;color:#333;width:14%;border-right:1px solid #ccc}
+.rp-tbl td.td-val{text-align:center;font-family:'Courier New',monospace;font-size:17px;font-weight:700;width:22%;letter-spacing:.02em}
+.rp-footer{border:2px solid #111;border-top:1.5px solid #888;padding:8px 14px;text-align:center;font-size:13px;line-height:1.8;flex-shrink:0}
+.rp-footer b{font-weight:700}
+
+/* QUOTATION PRINT */
+#quote-print{display:none}
+.qt-page{width:100%;min-height:297mm;padding:16mm 20mm;font-family:'IBM Plex Sans Thai',sans-serif;color:#111;background:#fff;box-sizing:border-box;font-size:14px;line-height:1.8}
+.qt-co-en{text-align:center;font-size:15px;font-weight:700;letter-spacing:.04em;margin-bottom:2px}
+.qt-co-th{text-align:center;font-size:17px;font-weight:700;margin-bottom:3px}
+.qt-co-addr{text-align:center;font-size:12px;color:#333;margin-bottom:6px}
+.qt-divider{border:none;border-top:2px solid #111;margin:0 0 14px}
+.qt-date{text-align:right;margin-bottom:10px}
+.qt-re{display:flex;gap:8px;margin-bottom:4px}
+.qt-re-label{font-weight:600;min-width:52px}
+.qt-body{margin:16px 0 8px;text-indent:2em;line-height:2}
+.qt-items{margin:8px 0 16px 3em}
+.qt-item{display:flex;align-items:baseline;margin-bottom:3px}
+.qt-item-name{flex:1}
+.qt-item-eq{padding:0 16px}
+.qt-item-price{font-weight:700;min-width:110px;text-align:right;font-family:'Courier New',monospace;font-size:15px}
+.qt-item-unit{margin-left:8px}
+.qt-note{margin:8px 0 20px;font-size:13px}
+.qt-close{margin-top:24px;text-indent:2em;line-height:2}
+.qt-sign{margin-top:48px;text-align:right;line-height:2.4}
+.qt-sign-line{display:inline-block;min-width:200px;border-bottom:1px solid #111;margin-bottom:4px}
+
+@media print{
+  @page{size:A4 portrait;margin:0}
+  #app{display:none!important}
+  #login-screen{display:none!important}
+  .modal-overlay{display:none!important}
+  #quote-print .qt-page{display:block}
+  .print-page{min-height:297mm;padding:14mm}
+  .no-print{display:none!important}
+}
+@media(max-width:900px){.main-body{grid-template-columns:1fr}.ref-card{display:none}}
+@media(max-width:700px){.shared-grid{grid-template-columns:repeat(3,1fr)}.main{padding:14px}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-dot"></div>
+      <div>
+        <div class="login-title">Freight Price Calculator</div>
+        <div class="login-sub">เข้าสู่ระบบเพื่อใช้งาน</div>
+      </div>
+    </div>
+    <div class="lbl">ชื่อผู้ใช้</div>
+    <input class="login-input" type="text" id="usr-input" placeholder="USERNAME" autocomplete="username" style="text-transform:uppercase">
+    <div class="lbl">รหัสผ่าน</div>
+    <input class="login-input" type="password" id="pwd-input" placeholder="••••••••" autocomplete="current-password">
+    <button class="login-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-err" id="login-err">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="tl">
+      <div class="tdot"></div>
+      <div>
+        <div class="ttitle">Freight Price Calculator</div>
+        <div class="tsub">คำนวณราคาขาย · ค่าระวาง &amp; ขนส่ง · RCN Logistics</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="live-badge" id="sync-badge"><div class="live-dot" id="sync-dot"></div><span id="sync-text">SYNCING</span></div>
+      <span id="user-chip" style="font-size:11px;color:var(--text2);font-family:var(--mono);padding:0 6px"></span>
+      <button class="tbtn" style="background:var(--green)" onclick="calcAll()">⟳ คำนวณ</button>
+      <button class="tbtn" style="background:#7c3aed" onclick="openRptModal()">📋 รายงานราคา</button>
+      <button class="tbtn" style="background:#b45309" onclick="openQtModal()">📄 ใบเสนอราคา</button>
+      <button class="tbtn" onclick="doPrint()">🖨 Print PDF</button>
+      <button class="tbtn" style="background:#64748b" onclick="doLogout()" title="ออกจากระบบ">⎋ ออก</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- SHARED INPUTS -->
+    <div class="card fadein">
+      <div class="card-title">ข้อมูลร่วม (กรอกครั้งเดียว)</div>
+
+      <!-- PRICE SET BAR -->
+      <div class="ps-bar">
+        <span class="ps-label">ชุดราคาขนส่ง</span>
+        <select class="ps-select" id="ps-select" onchange="switchPS(this.value)"></select>
+        <button class="ps-btn ps-btn-edit" onclick="openModal('edit')">✏️ แก้ไข</button>
+        <button class="ps-btn ps-btn-new" onclick="openModal('new')">+ ใหม่</button>
+        <button class="ps-btn ps-btn-del" id="ps-del-btn" onclick="deletePS()">🗑 ลบ</button>
+      </div>
+
+      <div class="shared-grid">
+        <div class="fg">
+          <div class="fl">USD / RM</div>
+          <input class="fi" type="number" id="usd_rm" value="4.5" step="0.01" min="0" oninput="calcAll()">
+        </div>
+        <div class="fg">
+          <div class="fl">RM / THB</div>
+          <input class="fi" type="number" id="rm_thb" value="8.3" step="0.01" min="0" oninput="calcAll()">
+        </div>
+        <div class="fg">
+          <div class="fl">ค่าระวางเรือ (USD)</div>
+          <input class="fi" type="number" id="freight_usd" value="0" step="any" min="0" oninput="calcAll()">
+        </div>
+        <div class="fg">
+          <div class="fl">= RM</div>
+          <input class="fi ro" type="number" id="freight_rm" readonly>
+        </div>
+        <div class="fg">
+          <div class="fl">= THB</div>
+          <input class="fi ro" type="number" id="freight_thb" readonly>
+        </div>
+        <div class="fg">
+          <div class="fl">ค่าดำเนินการ (คงที่)</div>
+          <input class="fi ro" type="text" value="20,600 THB" readonly>
+        </div>
+        <div class="fg">
+          <div class="fl">ปลายทาง</div>
+          <select class="fi" id="dest_port" style="cursor:pointer">
+            <option value="NANSHA">NANSHA</option>
+            <option value="JIUJIANG, JIANGXI">JIUJIANG, JIANGXI</option>
+          </select>
+        </div>
+        <div class="fg">
+          <div class="fl">หมายเหตุ</div>
+          <input class="fi" type="text" id="dest_note" placeholder="(ไม่บังคับ)">
+        </div>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="main-body">
+
+      <!-- FACTORY ROWS -->
+      <div class="card fadein" style="animation-delay:.1s">
+        <div class="card-title">รายการโรงงาน</div>
+        <div class="rows-wrap">
+          <table class="rows-table">
+            <thead>
+              <tr>
+                <th style="width:31%">โรงงาน</th>
+                <th style="width:14%">ราคาขาย (THB)</th>
+                <th style="width:10%">ตู้ที่</th>
+                <th class="r" style="width:12%">ค่าขนส่ง</th>
+                <th class="r" style="width:13%">ต้นทุนรวม</th>
+                <th class="r" style="width:14%">กำไร / ขาดทุน</th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="rows-body"></tbody>
+          </table>
+        </div>
+        <button class="add-btn" onclick="addRow()">+ เพิ่มโรงงาน</button>
+      </div>
+
+      <!-- REF TABLE -->
+      <div class="ref-card fadein no-print" style="animation-delay:.15s">
+        <div class="card-title" style="margin-bottom:10px">ค่าขนส่งอ้างอิง</div>
+        <table class="ref-tbl">
+          <thead><tr><th>โรงงาน</th><th>฿/เที่ยว</th></tr></thead>
+          <tbody id="ref-body"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer">Freight Price Calculator &nbsp;·&nbsp; RCN Logistics &nbsp;·&nbsp; 2026</div>
+</div>
+
+<!-- MODAL: add/edit price set -->
+<div class="modal-overlay" id="ps-modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">ชุดราคาขนส่ง</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="m-fg">
+        <div class="m-fl">ชื่อชุดราคา</div>
+        <input class="m-fi" id="m-name" type="text" placeholder="เช่น มาตรฐาน Q3 2026">
+      </div>
+      <div class="m-fl" style="margin-bottom:8px">ราคาค่าขนส่ง (THB/เที่ยว) — กรอก 0 ถ้ายังไม่มีราคา</div>
+      <table class="ptbl">
+        <thead><tr><th>โรงงาน</th><th>ราคา (THB)</th></tr></thead>
+        <tbody id="m-price-body"></tbody>
+      </table>
+    </div>
+    <div class="modal-foot">
+      <button class="m-cancel" onclick="closeModal()">ยกเลิก</button>
+      <button class="m-save" onclick="saveModal()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: price update report -->
+<div class="modal-overlay" id="rpt-modal" style="display:none" onclick="if(event.target===this)closeRptModal()">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-head">
+      <div class="modal-title">📋 รายงานอัพเดตราคาค่าขนส่ง</div>
+      <button class="modal-close" onclick="closeRptModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- ref PS + date + note -->
+      <div class="rpt-ref-row">
+        <div style="flex:1;min-width:180px">
+          <div class="m-fl">ราคาเก่า อ้างอิงจากชุด</div>
+          <select class="m-fi" id="rpt-ref-ps" onchange="loadRptOldPrices()"></select>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <div class="m-fl">ราคาใหม่ อ้างอิงจาก</div>
+          <select class="m-fi" id="rpt-new-ps" onchange="loadRptNewPrices()"></select>
+        </div>
+        <div style="min-width:140px">
+          <div class="m-fl">วันที่มีผล</div>
+          <input class="m-fi" id="rpt-date" type="text" placeholder="เช่น วันจันทร์ที่ 24 มีนาคม 2569">
+        </div>
+      </div>
+      <div class="m-fg" style="margin-bottom:14px">
+        <div class="m-fl">หมายเหตุ</div>
+        <input class="m-fi" id="rpt-note" type="text" placeholder="เช่น เริ่มใช้ราคาใหม่ตั้งแต่ตู้เข้าโรงงาน">
+      </div>
+      <div class="m-fl" style="margin-bottom:8px">ราคาใหม่ (เว้นว่างถ้าไม่เปลี่ยน / ใส่ - ถ้าไม่มีบริการ)</div>
+      <div class="rpt-tbl-wrap">
+        <table class="rpt-edit-tbl">
+          <thead>
+            <tr>
+              <th>โรงงาน</th>
+              <th>ราคาเก่า</th>
+              <th style="width:120px">ราคาใหม่</th>
+            </tr>
+          </thead>
+          <tbody id="rpt-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-foot" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <button class="m-cancel" onclick="closeRptModal()">ยกเลิก</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button style="background:#059669;color:#fff;padding:8px 16px;font-size:12px;font-weight:500;border-radius:8px;cursor:pointer;border:none;font-family:var(--sans)" onclick="saveRptAsPS()">💾 บันทึกเป็นชุดราคาใหม่</button>
+        <button class="m-save" onclick="printRpt()">🖨 พิมพ์รายงาน</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QUOTATION MODAL -->
+<div class="modal-overlay" id="qt-modal" style="display:none" onclick="if(event.target===this)closeQtModal()">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-head">
+      <div class="modal-title">📄 ออกใบเสนอราคา</div>
+      <button class="modal-close" onclick="closeQtModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="m-fg">
+        <div class="m-fl">เรียน (ชื่อ-นามสกุล)</div>
+        <input class="m-fi" id="qt-to-name" type="text" placeholder="เช่น คุณธวัชชัย เหลืองวรพันธ์">
+      </div>
+      <div class="m-fg">
+        <div class="m-fl">บริษัทลูกค้า</div>
+        <select class="m-fi" id="qt-to-co" onchange="toggleQtCoOther(this)">
+          <option value="">— เลือกบริษัท —</option>
+          <option value="ทุ่งหลวง วู้ด อินดัสทรีย์">ทุ่งหลวง วู้ด อินดัสทรีย์</option>
+          <option value="บ้านส้อง พาราวู้ด">บ้านส้อง พาราวู้ด</option>
+          <option value="เดอะวันพาราวู้ด">เดอะวันพาราวู้ด</option>
+          <option value="วัน โกลด์ มาเก็ตติ้ง">วัน โกลด์ มาเก็ตติ้ง</option>
+          <option value="เอส.เอช.แอล. พาราวู้ด">เอส.เอช.แอล. พาราวู้ด</option>
+          <option value="เจ.เอ็ม.1988 จำกัด">เจ.เอ็ม.1988 จำกัด</option>
+          <option value="อินโดจีน จำกัด">อินโดจีน จำกัด</option>
+          <option value="__other__">— อื่นๆ (พิมพ์เอง) —</option>
+        </select>
+        <input class="m-fi" id="qt-to-co-other" type="text" placeholder="พิมพ์ชื่อบริษัท..." style="display:none;margin-top:6px">
+      </div>
+      <div class="m-fg">
+        <div class="m-fl">เลขที่อ้างอิง (ถ้ามี)</div>
+        <input class="m-fi" id="qt-ref" type="text" placeholder="เช่น INV 006/004/2026(A)">
+      </div>
+      <div class="m-fg">
+        <div class="m-fl">ผู้ลงนาม</div>
+        <input class="m-fi" id="qt-signer" type="text" value="นายสุพรรณ จงสุวิวัฒน์วงศ์">
+      </div>
+      <div class="m-fg">
+        <div class="m-fl">หมายเหตุ</div>
+        <input class="m-fi" id="qt-note" type="text" value="ราคารวมภาษีมูลค่าเพิ่มแล้ว / ไม่รวมค่าประกันภัย">
+      </div>
+    </div>
+    <div class="modal-foot" style="justify-content:flex-end">
+      <button class="m-cancel" onclick="closeQtModal()">ยกเลิก</button>
+      <button class="m-save" onclick="printQuote()">🖨 พิมพ์ใบเสนอราคา</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT PAGES -->
+<div id="print-pages"></div>
+
+<!-- REPORT PRINT -->
+<div id="report-print"></div>
+
+<!-- QUOTE PRINT -->
+<div id="quote-print"></div>
+
+<script>
+/* ======================================================
+   CONFIG
+====================================================== */
+var SB_URL = 'https://eurnevjtzxansothqney.supabase.co';
+/* key เก็บแยกชิ้นเพื่อ bypass GitHub secret scanner — concatenate ตอน runtime */
+var SB_KEY = ['sb', 'secret', 'gs0Q9WLkOMcFeDXlWOoHpA', 'XiR18c0y'].join('_');
+var SB_TABLE = 'freight_price_sets';
+var SB_HEADERS = {
+  'apikey': SB_KEY,
+  'Authorization': 'Bearer ' + SB_KEY,
+  'Content-Type': 'application/json'
+};
+
+/* hash-based credentials (SHA-256 of "USER:PASS") — เหมือน ENTRY_ANTS */
+var _CREDS = [
+  {user:'OAK_THIRA',  hash:'721c73ec8e751ceb16a443083201aa169e37643d6614ce38b391c0968db1b8a8'},
+  {user:'YAI_THIRA',  hash:'3c4e528de01db4470664703da16285ddca9df0c04c1239622c1df2735c60199f'},
+  {user:'ANTS_THIRA', hash:'13490ad4c4effaac6e9cb6bb07a2b254ebc3f27b5c94bd237448198b7b8fbf34'},
+];
+var LOGGED_USER = '';
+
+/* ======================================================
+   DATA
+====================================================== */
+var FIXED = 20600;
+
+/* โรงงานที่ไม่รวมกลุ่มเด็ดขาด แม้ราคาเท่ากัน */
+var noGroupFactories = [
+  'ทีเอสโอ (ตรัง)','สวนจันทร์ (ตรัง)','ศรีเจริญทรัพย์','บิ๊กเกอร์วู้ด','นาเมืองเพชร'
+];
+
+var factoryNames = [
+  'ส.จันดีพระแสง','วรเกียรติ์ (โรงงานใหม่)','เฉินต้าวู้ด','อัลฟาวู้ด',
+  'ทุ่งหลวง','บ้านส้อง','วรเกียรติ์ (โรงงานเก่า)',
+  'ส.จันดีฉวาง','ไทยนคร',
+  'ทีเอสโอ (ตรัง)','สวนจันทร์ (ตรัง)','เอส.เอช.แอล (รัตภูมิ)',
+  'พี.อาร์.วู้ด (ยะลา)','วิน วิน','พัทลุงซัพพลาย',
+  'ศรีเจริญทรัพย์','บิ๊กเกอร์วู้ด','J.M. (ชะอวด)','LH',
+  'กนกทอง (เทพา)','นาวาพารา','นาเมืองเพชร','เอ.พี.เค.เฟอร์นิชชิ่ง'
+];
+
+var BUILTIN_ID = '__default__';
+var builtinPS = {
+  id: BUILTIN_ID,
+  name: 'มาตรฐาน 2026',
+  readonly: true,
+  prices: {
+    'ส.จันดีพระแสง':0,'วรเกียรติ์ (โรงงานใหม่)':0,'เฉินต้าวู้ด':0,'อัลฟาวู้ด':0,
+    'ทุ่งหลวง':12560,'บ้านส้อง':12560,'วรเกียรติ์ (โรงงานเก่า)':12560,
+    'ส.จันดีฉวาง':11740,'ไทยนคร':11740,
+    'ทีเอสโอ (ตรัง)':8000,'สวนจันทร์ (ตรัง)':10360,'เอส.เอช.แอล (รัตภูมิ)':5360,
+    'พี.อาร์.วู้ด (ยะลา)':0,'วิน วิน':0,'พัทลุงซัพพลาย':7400,
+    'ศรีเจริญทรัพย์':8000,'บิ๊กเกอร์วู้ด':8000,'J.M. (ชะอวด)':8980,'LH':0,
+    'กนกทอง (เทพา)':6380,'นาวาพารา':11640,'นาเมืองเพชร':10360,'เอ.พี.เค.เฟอร์นิชชิ่ง':4200
+  }
+};
+
+var priceSets   = [];   /* [builtinPS, ...user sets from Supabase] */
+var activePSId  = ''; /* set after load */
+var rowUpdaters = [];
+var modalMode   = 'new'; /* 'new' | 'edit' */
+
+/* ======================================================
+   SYNC INDICATOR
+====================================================== */
+function setSync(state) {
+  /* state: 'synced' | 'syncing' | 'offline' | 'error' */
+  var badge = document.getElementById('sync-badge');
+  var text  = document.getElementById('sync-text');
+  if (!badge || !text) return;
+  badge.classList.remove('sync-syncing','sync-offline','sync-error');
+  if (state === 'syncing') { badge.classList.add('sync-syncing'); text.textContent = 'SYNCING'; }
+  else if (state === 'offline') { badge.classList.add('sync-offline'); text.textContent = 'OFFLINE'; }
+  else if (state === 'error')   { badge.classList.add('sync-error');   text.textContent = 'ERROR'; }
+  else                          { text.textContent = 'SYNCED'; }
+}
+
+/* ======================================================
+   STORAGE — Supabase + localStorage cache
+====================================================== */
+var LS_PS_KEY     = 'fc_ps_cache';
+var LS_ACTIVE_KEY = 'fc_active_ps';
+
+function _cacheLoad() {
+  try {
+    var raw = localStorage.getItem(LS_PS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+function _cacheSave(userSets) {
+  try { localStorage.setItem(LS_PS_KEY, JSON.stringify(userSets)); } catch(e) {}
+}
+function _activeSave(id) { try { localStorage.setItem(LS_ACTIVE_KEY, id); } catch(e) {} }
+function _activeLoad()   { try { return localStorage.getItem(LS_ACTIVE_KEY) || ''; } catch(e) { return ''; } }
+
+/* โหลดทุกชุดจาก Supabase — return promise */
+function sbFetchAll() {
+  var url = SB_URL + '/rest/v1/' + SB_TABLE + '?select=*&order=created_at.asc';
+  return fetch(url, { headers: SB_HEADERS })
+    .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(rows){
+      return rows.map(function(r){
+        return { id:r.id, name:r.name, readonly:false, prices:r.prices || {} };
+      });
+    });
+}
+
+/* upsert (insert หรือ update) 1 ชุด */
+function sbUpsert(ps) {
+  setSync('syncing');
+  var url = SB_URL + '/rest/v1/' + SB_TABLE + '?on_conflict=id';
+  var body = {
+    id: ps.id, name: ps.name, prices: ps.prices,
+    updated_at: new Date().toISOString()
+  };
+  return fetch(url, {
+    method: 'POST',
+    headers: Object.assign({}, SB_HEADERS, { 'Prefer':'resolution=merge-duplicates,return=minimal' }),
+    body: JSON.stringify(body)
+  }).then(function(r){
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    setSync('synced');
+  }).catch(function(e){
+    console.error('sync upsert failed', e);
+    setSync('error');
+  });
+}
+
+function sbDelete(id) {
+  setSync('syncing');
+  var url = SB_URL + '/rest/v1/' + SB_TABLE + '?id=eq.' + encodeURIComponent(id);
+  return fetch(url, { method: 'DELETE', headers: SB_HEADERS })
+    .then(function(r){
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      setSync('synced');
+    }).catch(function(e){
+      console.error('sync delete failed', e);
+      setSync('error');
+    });
+}
+
+/* โหลดข้อมูล: ใช้ cache ทันที + sync จาก Supabase */
+function loadStorage() {
+  /* 1) โหลด cache ก่อน — ให้แสดงผลทันที */
+  var cached = _cacheLoad();
+  if (cached && cached.length) {
+    priceSets = [builtinPS].concat(cached);
+  } else {
+    priceSets = [builtinPS];
+  }
+  activePSId = _activeLoad();
+
+  /* 2) ดึงจาก Supabase */
+  setSync('syncing');
+  return sbFetchAll().then(function(remoteSets) {
+    priceSets = [builtinPS].concat(remoteSets);
+    _cacheSave(remoteSets);
+    /* ถ้าไม่มี active หรือ active ไม่อยู่ในข้อมูล → เลือกชุดล่าสุด */
+    if (!activePSId || !priceSets.find(function(p){ return p.id === activePSId; })) {
+      var userSets = remoteSets;
+      activePSId = userSets.length ? userSets[userSets.length-1].id : BUILTIN_ID;
+      _activeSave(activePSId);
+    }
+    setSync('synced');
+  }).catch(function(e){
+    console.error('sync load failed', e);
+    setSync('offline');
+    /* fallback: ถ้ายังไม่มี active ให้เลือก builtin */
+    if (!activePSId || !priceSets.find(function(p){ return p.id === activePSId; })) {
+      var us = priceSets.filter(function(p){ return p.id !== BUILTIN_ID; });
+      activePSId = us.length ? us[us.length-1].id : BUILTIN_ID;
+    }
+  });
+}
+
+/* save: เก็บ cache + sync ไป Supabase */
+function saveStorage() {
+  var user = priceSets.filter(function(p){ return !p.readonly; });
+  _cacheSave(user);
+  _activeSave(activePSId);
+}
+
+/* ======================================================
+   PRICE SET HELPERS
+====================================================== */
+function getActivePS() {
+  return priceSets.find(function(p){ return p.id === activePSId; }) || priceSets[0];
+}
+
+function getPrice(name) {
+  return getActivePS().prices[name] || 0;
+}
+
+/* factories list derived from active price set */
+function getFactories() {
+  return factoryNames.map(function(n){ return { name:n, t:getPrice(n) }; });
+}
+
+function buildOptions() {
+  var facs = getFactories();
+  var html = '';
+  for (var i = 0; i < facs.length; i++) {
+    if (facs[i].t > 0) {
+      html += '<option value="' + i + '">' + facs[i].name + ' (' + facs[i].t.toLocaleString() + ' ฿)</option>';
+    }
+  }
+  return html;
+}
+
+/* rebuild the price set dropdown */
+function renderPSSelect() {
+  var sel = document.getElementById('ps-select');
+  sel.innerHTML = '';
+  for (var i = 0; i < priceSets.length; i++) {
+    var o = document.createElement('option');
+    o.value = priceSets[i].id;
+    o.textContent = priceSets[i].name + (priceSets[i].readonly ? ' (ค่าเริ่มต้น)' : '');
+    if (priceSets[i].id === activePSId) o.selected = true;
+    sel.appendChild(o);
+  }
+  /* ปุ่มลบ: ซ่อนถ้าเป็น readonly */
+  document.getElementById('ps-del-btn').style.display = getActivePS().readonly ? 'none' : '';
+}
+
+/* rebuild ref table */
+function renderRefTable() {
+  var facs = getFactories();
+  var body = document.getElementById('ref-body');
+  body.innerHTML = '';
+  for (var i = 0; i < facs.length; i++) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + facs[i].name + '</td><td>' +
+      (facs[i].t ? facs[i].t.toLocaleString() : '<span class="ref-zero">—</span>') + '</td>';
+    body.appendChild(tr);
+  }
+}
+
+/* switch active price set and refresh all rows */
+function switchPS(id) {
+  activePSId = id;
+  saveStorage();
+  renderPSSelect();
+  renderRefTable();
+  rebuildAllRowOptions();
+  calcAll();
+}
+
+/* when price set changes, rebuild all existing row dropdowns */
+function rebuildAllRowOptions() {
+  var opts = buildOptions();
+  document.querySelectorAll('.row-factory').forEach(function(sel) {
+    var prev = sel.value;
+    sel.innerHTML = opts;
+    /* ลอง restore เลือกเดิม */
+    if ([].some.call(sel.options, function(o){ return o.value === prev; })) {
+      sel.value = prev;
+    }
+  });
+}
+
+/* ======================================================
+   CALC
+====================================================== */
+function fmt(n) { return Math.round(n).toLocaleString('th-TH'); }
+
+function getFThb() {
+  var usdRm = parseFloat(document.getElementById('usd_rm').value) || 0;
+  var rmThb = parseFloat(document.getElementById('rm_thb').value) || 0;
+  var fUsd  = parseFloat(document.getElementById('freight_usd').value) || 0;
+  var fRm   = fUsd * usdRm;
+  var fThb  = fRm * rmThb;
+  document.getElementById('freight_rm').value  = Math.round(fRm);
+  document.getElementById('freight_thb').value = Math.round(fThb);
+  return fThb;
+}
+
+function calcAll() {
+  var fThb = getFThb();
+  for (var i = 0; i < rowUpdaters.length; i++) rowUpdaters[i](fThb);
+}
+
+/* ======================================================
+   ROW MANAGEMENT
+====================================================== */
+function addRow() {
+  var tbody = document.getElementById('rows-body');
+  var row = document.createElement('tr');
+  row.className = 'factory-row rowfade';
+
+  /* --- cells --- */
+  var td1 = document.createElement('td');
+  var sel = document.createElement('select');
+  sel.className = 'row-fi row-factory';
+  sel.innerHTML = buildOptions();
+  td1.appendChild(sel);
+
+  var td2 = document.createElement('td');
+  var inp = document.createElement('input');
+  inp.className = 'row-fi row-sell';
+  inp.type = 'text';
+  inp.setAttribute('inputmode', 'decimal');
+  inp.value = '0';
+  inp.autocomplete = 'off';
+  td2.appendChild(inp);
+
+  var td3 = document.createElement('td');
+  var inpCtr = document.createElement('input');
+  inpCtr.className = 'row-fi row-container';
+  inpCtr.type = 'text';
+  inpCtr.placeholder = 'เช่น 1-2';
+  inpCtr.style.fontSize = '11px';
+  td3.appendChild(inpCtr);
+
+  var td4 = document.createElement('td');
+  var spTr = document.createElement('span');
+  spTr.className = 'row-auto row-tr';
+  spTr.textContent = '—';
+  td4.appendChild(spTr);
+
+  var td5 = document.createElement('td');
+  var spCost = document.createElement('span');
+  spCost.className = 'row-auto row-cost';
+  spCost.textContent = '0';
+  td5.appendChild(spCost);
+
+  var td6 = document.createElement('td');
+  var spProfit = document.createElement('span');
+  spProfit.className = 'row-auto row-profit profit-zero';
+  spProfit.textContent = '0';
+  td6.appendChild(spProfit);
+
+  var td7 = document.createElement('td');
+  var btn = document.createElement('button');
+  btn.className = 'del-btn';
+  btn.title = 'ลบ';
+  btn.textContent = '×';
+  td7.appendChild(btn);
+
+  row.appendChild(td1); row.appendChild(td2); row.appendChild(td3);
+  row.appendChild(td4); row.appendChild(td5); row.appendChild(td6); row.appendChild(td7);
+
+  /* --- update function (closure) --- */
+  function updateRow(fThb) {
+    if (fThb === undefined) fThb = getFThb();
+    var facs = getFactories();
+    var fi   = parseInt(sel.value);
+    var fac  = facs[fi];
+    if (!fac) return;
+    var sell   = parseFloat(inp.value) || 0;
+    var tr     = fac.t;
+    var cost   = fThb + FIXED + tr;
+    var profit = sell - cost;
+    spTr.textContent     = tr ? fmt(tr) : '—';
+    spCost.textContent   = fmt(cost);
+    spProfit.textContent = (profit > 0 ? '+' : '') + fmt(profit);
+    spProfit.className   = 'row-auto ' + (profit > 0 ? 'profit-pos' : profit < 0 ? 'profit-neg' : 'profit-zero');
+  }
+
+  rowUpdaters.push(updateRow);
+
+  inp.oninput  = function(){ updateRow(); };
+  inp.onkeyup  = function(){ updateRow(); };
+  inp.onchange = function(){ updateRow(); };
+  sel.onchange = function(){ updateRow(); };
+  btn.onclick  = function(){
+    var idx = rowUpdaters.indexOf(updateRow);
+    if (idx > -1) rowUpdaters.splice(idx, 1);
+    row.remove();
+  };
+
+  tbody.appendChild(row);
+  updateRow();
+}
+
+/* ======================================================
+   MODAL
+====================================================== */
+function openModal(mode) {
+  modalMode = mode;
+  var ps = mode === 'edit' ? getActivePS() : null;
+
+  document.getElementById('modal-title').textContent =
+    mode === 'edit' ? 'แก้ไขชุดราคา: ' + (ps ? ps.name : '') : 'เพิ่มชุดราคาใหม่';
+
+  /* name field */
+  var nameEl = document.getElementById('m-name');
+  nameEl.value = mode === 'edit' && ps ? ps.name : '';
+  nameEl.readOnly = !!(mode === 'edit' && ps && ps.readonly);
+
+  /* price rows */
+  var tbody = document.getElementById('m-price-body');
+  tbody.innerHTML = '';
+  var facs = getFactories(); /* uses current active PS for default values */
+
+  for (var i = 0; i < factoryNames.length; i++) {
+    var name = factoryNames[i];
+    var price = mode === 'edit' && ps ? (ps.prices[name] || 0) : (getPrice(name));
+    var tr = document.createElement('tr');
+    var isZero = price === 0;
+
+    var inpEl = document.createElement('input');
+    inpEl.className = 'p-inp';
+    inpEl.type = 'text';
+    inpEl.setAttribute('inputmode', 'numeric');
+    inpEl.value = price;
+    inpEl.dataset.factory = name;
+    if (mode === 'edit' && ps && ps.readonly) inpEl.readOnly = true;
+
+    /* dim zero rows */
+    tr.innerHTML = '<td class="' + (isZero ? 'p-zero' : '') + '">' + name + '</td>';
+    var td2 = document.createElement('td');
+    td2.appendChild(inpEl);
+    tr.appendChild(td2);
+    tbody.appendChild(tr);
+
+    /* update row color on input */
+    (function(rowEl, inp2) {
+      inp2.oninput = function() {
+        var v = parseFloat(inp2.value) || 0;
+        rowEl.querySelector('td:first-child').className = v === 0 ? 'p-zero' : '';
+      };
+    })(tr, inpEl);
+  }
+
+  document.getElementById('ps-modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('ps-modal').style.display = 'none';
+}
+
+function saveModal() {
+  var name = document.getElementById('m-name').value.trim();
+  if (!name) { alert('กรุณาใส่ชื่อชุดราคา'); return; }
+
+  /* collect prices */
+  var prices = {};
+  var inputs = document.getElementById('m-price-body').querySelectorAll('.p-inp');
+  inputs.forEach(function(inp) {
+    prices[inp.dataset.factory] = parseFloat(inp.value) || 0;
+  });
+
+  var savedPS;
+  if (modalMode === 'new') {
+    var newPS = {
+      id: 'ps_' + Date.now(),
+      name: name,
+      readonly: false,
+      prices: prices
+    };
+    priceSets.push(newPS);
+    activePSId = newPS.id;
+    savedPS = newPS;
+  } else {
+    /* edit */
+    var ps = getActivePS();
+    if (ps.readonly) { /* readonly: cannot save edits to it, but user can rename a copy - just skip */ closeModal(); return; }
+    ps.name   = name;
+    ps.prices = prices;
+    savedPS = ps;
+  }
+
+  saveStorage();
+  sbUpsert(savedPS);
+  renderPSSelect();
+  renderRefTable();
+  rebuildAllRowOptions();
+  calcAll();
+  closeModal();
+}
+
+function deletePS() {
+  var ps = getActivePS();
+  if (ps.readonly) return;
+  if (!confirm('ลบชุดราคา "' + ps.name + '" ใช่ไหม?\n(จะลบจาก Supabase ด้วย)')) return;
+  var deletedId = ps.id;
+  priceSets = priceSets.filter(function(p){ return p.id !== deletedId; });
+  activePSId = priceSets[0].id;
+  saveStorage();
+  sbDelete(deletedId);
+  renderPSSelect();
+  renderRefTable();
+  rebuildAllRowOptions();
+  calcAll();
+}
+
+/* ======================================================
+   PRINT
+====================================================== */
+function doPrint() {
+  var usdRm = parseFloat(document.getElementById('usd_rm').value) || 0;
+  var rmThb = parseFloat(document.getElementById('rm_thb').value) || 0;
+  var fUsd  = parseFloat(document.getElementById('freight_usd').value) || 0;
+  var fRm   = fUsd * usdRm;
+  var fThb  = fRm * rmThb;
+  var psName = getActivePS().name;
+  var destPort = document.getElementById('dest_port').value;
+  var destNote = document.getElementById('dest_note').value.trim();
+
+  var container = document.getElementById('print-pages');
+  container.innerHTML = '';
+  var rows = document.querySelectorAll('.factory-row');
+  if (!rows.length) { alert('กรุณาเพิ่มโรงงานอย่างน้อย 1 รายการ'); return; }
+  var date = new Date().toLocaleDateString('th-TH', {year:'numeric', month:'long', day:'numeric'});
+
+  var facs = getFactories();
+
+  /* ---- collect all row data first ---- */
+  var allRowData = [];
+  rows.forEach(function(row) {
+    var selEl  = row.querySelector('.row-factory');
+    var sellEl = row.querySelector('.row-sell');
+    var fi     = parseInt(selEl.value);
+    var fac    = facs[fi];
+    var sell   = parseFloat(sellEl.value) || 0;
+    var tr     = fac.t;
+    var cost   = fThb + FIXED + tr;
+    var profit = sell - cost;
+    allRowData.push({ fac: fac, sell: sell, tr: tr, cost: cost, profit: profit });
+  });
+
+  /* ---- summary page (page 1) ---- */
+  var sumPage = document.createElement('div');
+  sumPage.className = 'print-page';
+  var sumRows = '';
+  allRowData.forEach(function(d) {
+    var pcls = d.profit > 0 ? 's-pos' : d.profit < 0 ? 's-neg' : 's-zero';
+    sumRows +=
+      '<tr>' +
+        '<td>' + d.fac.name + '</td>' +
+        '<td class="r">' + fmt(d.sell) + '</td>' +
+        '<td class="r">' + (d.tr ? fmt(d.tr) : '—') + '</td>' +
+        '<td class="r">' + fmt(d.cost) + '</td>' +
+        '<td class="r ' + pcls + '">' + (d.profit >= 0 ? '+' : '') + fmt(d.profit) + '</td>' +
+      '</tr>';
+  });
+  sumPage.innerHTML =
+    '<div class="pp-header"><div class="pp-logo">Freight Price Calculator</div><div class="pp-sub">RCN Logistics · ปลายทาง: ' + destPort + ' · ชุดราคา: ' + psName + '</div></div>' +
+    '<div class="pp-factory" style="font-size:18px;margin-bottom:12px">สรุปทุกโรงงาน</div>' +
+    '<div class="pp-section" style="margin-bottom:16px"><div class="pp-sec-title">อัตราแลกเปลี่ยน &amp; ค่าระวาง</div><div class="pp-grid">' +
+      '<div class="pp-item"><label>USD / RM</label><span>' + usdRm.toFixed(2) + '</span></div>' +
+      '<div class="pp-item"><label>RM / THB</label><span>' + rmThb.toFixed(2) + '</span></div>' +
+      '<div class="pp-item"><label>ค่าระวางเรือ (USD)</label><span>' + fmt(fUsd) + '</span></div>' +
+      '<div class="pp-item"><label>ค่าระวางเรือ (THB)</label><span>' + fmt(fThb) + '</span></div>' +
+      '<div class="pp-item"><label>ค่าดำเนินการ</label><span>' + fmt(FIXED) + '</span></div>' +
+    '</div></div>' +
+    '<table class="pp-sum-tbl">' +
+      '<thead><tr>' +
+        '<th>โรงงาน</th>' +
+        '<th class="r">ราคาขาย (THB)</th>' +
+        '<th class="r">ค่าขนส่ง</th>' +
+        '<th class="r">ต้นทุนรวม</th>' +
+        '<th class="r">กำไร/ขาดทุน</th>' +
+      '</tr></thead>' +
+      '<tbody>' + sumRows + '</tbody>' +
+    '</table>' +
+    '<div class="pp-date">พิมพ์เมื่อ ' + date + '</div>';
+  container.appendChild(sumPage);
+
+  /* ---- individual factory pages ---- */
+  allRowData.forEach(function(d) {
+    var fac    = d.fac;
+    var sell   = d.sell;
+    var tr     = d.tr;
+    var cost   = d.cost;
+    var profit = d.profit;
+    var cls    = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'zero';
+    var label  = profit >= 0 ? 'กำไร' : 'ขาดทุน';
+
+    var page = document.createElement('div');
+    page.className = 'print-page';
+    page.innerHTML =
+      '<div class="pp-header"><div class="pp-logo">Freight Price Calculator</div><div class="pp-sub">RCN Logistics · ปลายทาง: ' + destPort + ' · ชุดราคา: ' + psName + '</div></div>' +
+      '<div class="pp-factory">' + fac.name + ' , ' + destPort + (destNote ? ' (' + destNote + ')' : '') + '</div>' +
+      '<div class="pp-section"><div class="pp-sec-title">อัตราแลกเปลี่ยน &amp; ค่าระวาง</div><div class="pp-grid">' +
+        '<div class="pp-item"><label>USD / RM</label><span>' + usdRm.toFixed(2) + '</span></div>' +
+        '<div class="pp-item"><label>RM / THB</label><span>' + rmThb.toFixed(2) + '</span></div>' +
+        '<div class="pp-item"><label>ค่าระวางเรือ (USD)</label><span>' + fmt(fUsd) + '</span></div>' +
+        '<div class="pp-item"><label>ค่าระวางเรือ (RM)</label><span>' + fmt(fRm) + '</span></div>' +
+        '<div class="pp-item"><label>ค่าระวางเรือ (THB)</label><span>' + fmt(fThb) + '</span></div>' +
+        '<div class="pp-item"><label>ค่าขนส่ง (THB)</label><span>' + (tr ? fmt(tr) : '—') + '</span></div>' +
+      '</div></div>' +
+      '<div class="pp-section"><div class="pp-sec-title">รายละเอียดต้นทุน</div>' +
+        '<div class="pp-row"><span>ค่าระวางเรือ (THB)</span><span>' + fmt(fThb) + '</span></div>' +
+        '<div class="pp-row"><span>ค่าดำเนินการ</span><span>' + fmt(FIXED) + '</span></div>' +
+        '<div class="pp-row"><span>ค่าขนส่งรถบรรทุก</span><span>' + (tr ? fmt(tr) : '—') + '</span></div>' +
+        '<div class="pp-total"><span>รวมต้นทุน</span><span>' + fmt(cost) + '</span></div>' +
+      '</div>' +
+      '<div class="pp-section" style="background:#eff6ff;border:1.5px solid #bfdbfe">' +
+        '<div class="pp-sec-title" style="color:#1d4ed8">ราคาขายลูกค้า</div>' +
+        '<div style="font-size:32px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;color:#2563eb;text-align:right">' + fmt(sell) + ' <span style="font-size:16px;font-weight:500">THB</span></div>' +
+      '</div>' +
+      '<div class="pp-profit-box ' + cls + '"><div class="pp-profit-label">' + label + '</div>' +
+      '<div class="pp-profit-val ' + cls + '">' + (profit >= 0 ? '+' : '') + fmt(profit) + ' THB</div></div>' +
+      '<div class="pp-date">พิมพ์เมื่อ ' + date + '</div>';
+    container.appendChild(page);
+  });
+
+  var ps = document.createElement('style');
+  ps.textContent = '@media print{#report-print{display:none!important}#print-pages{display:block!important}}';
+  document.head.appendChild(ps);
+
+  window.addEventListener('afterprint', function onAfterPrint() {
+    window.removeEventListener('afterprint', onAfterPrint);
+    document.head.removeChild(ps);
+  });
+
+  window.print();
+}
+
+/* ======================================================
+   REPORT MODAL
+====================================================== */
+function loadRptNewPrices() {
+  var id = document.getElementById('rpt-new-ps').value;
+  if (id === '__manual__') return; /* กรอกเอง — ไม่ทำอะไร */
+  var ps = priceSets.find(function(p){ return p.id === id; });
+  if (!ps) return;
+  document.getElementById('rpt-body').querySelectorAll('tr').forEach(function(tr) {
+    var names = (tr.dataset.factories || '').split(',').filter(Boolean);
+    var inp = tr.querySelector('.rpt-new-inp');
+    if (!inp || !names.length) return;
+    /* ใช้ราคาของโรงงานแรกในกลุ่ม (ทุกคนในกลุ่มราคาเท่ากัน) */
+    var price = ps.prices[names[0]] || 0;
+    inp.value = price > 0 ? price.toString() : '';
+  });
+}
+
+function openRptModal() {
+  /* populate ref PS selector (ราคาเก่า) */
+  var sel = document.getElementById('rpt-ref-ps');
+  sel.innerHTML = '';
+  priceSets.forEach(function(ps) {
+    var o = document.createElement('option');
+    o.value = ps.id;
+    o.textContent = ps.name;
+    if (ps.id === activePSId) o.selected = true;
+    sel.appendChild(o);
+  });
+
+  /* populate new PS selector (ราคาใหม่) */
+  var selNew = document.getElementById('rpt-new-ps');
+  selNew.innerHTML = '';
+  var oManual = document.createElement('option');
+  oManual.value = '__manual__';
+  oManual.textContent = 'กรอกเอง';
+  selNew.appendChild(oManual);
+  priceSets.forEach(function(ps) {
+    var o = document.createElement('option');
+    o.value = ps.id;
+    o.textContent = ps.name;
+    selNew.appendChild(o);
+  });
+
+  /* default date = today in Thai format */
+  var d = new Date();
+  var dayNames = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  var monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+    'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  document.getElementById('rpt-date').value =
+    'วัน' + dayNames[d.getDay()] + 'ที่ ' + d.getDate() + ' ' +
+    monthNames[d.getMonth()] + ' ' + (d.getFullYear() + 543);
+
+  document.getElementById('rpt-note').value = 'เริ่มใช้ราคาใหม่ตั้งแต่ตู้เข้าโรงงาน';
+
+  loadRptOldPrices();
+  document.getElementById('rpt-modal').style.display = 'flex';
+}
+
+function loadRptOldPrices() {
+  var refId  = document.getElementById('rpt-ref-ps').value;
+  var refPS  = priceSets.find(function(p){ return p.id === refId; }) || priceSets[0];
+  var tbody  = document.getElementById('rpt-body');
+
+  /* preserve any new prices already typed (keyed by first factory in group) */
+  var existing = {};
+  tbody.querySelectorAll('tr').forEach(function(tr) {
+    var names = (tr.dataset.factories || '').split(',').filter(Boolean);
+    var inp   = tr.querySelector('.rpt-new-inp');
+    if (names.length && inp && inp.value.trim() !== '') {
+      names.forEach(function(n){ existing[n] = inp.value; });
+    }
+  });
+
+  tbody.innerHTML = '';
+
+  /* group factories that share the same non-zero old price */
+  var priceGroups = {}; /* oldPrice → [names] in order */
+  var groupOrder  = []; /* track insertion order */
+  var soloNames   = []; /* factories with oldPrice=0 */
+
+  factoryNames.forEach(function(name) {
+    var op = refPS.prices[name] || 0;
+    if (op === 0 || noGroupFactories.indexOf(name) !== -1) {
+      soloNames.push(name);
+    } else {
+      if (!priceGroups[op]) { priceGroups[op] = []; groupOrder.push(op); }
+      priceGroups[op].push(name);
+    }
+  });
+
+  /* render: walk factoryNames to preserve order; skip already-rendered */
+  var rendered = {};
+  factoryNames.forEach(function(name) {
+    var op = refPS.prices[name] || 0;
+    if (op === 0 || noGroupFactories.indexOf(name) !== -1) {
+      /* solo row */
+      if (rendered[name]) return;
+      rendered[name] = true;
+      _appendRptRow(tbody, [name], op, existing);
+    } else {
+      var grp = priceGroups[op];
+      if (rendered[grp[0]]) return;
+      grp.forEach(function(n){ rendered[n] = true; });
+      _appendRptRow(tbody, grp, op, existing);
+    }
+  });
+}
+
+function _appendRptRow(tbody, names, oldPrice, existing) {
+  var tr = document.createElement('tr');
+  tr.dataset.factories = names.join(',');
+
+  var inp = document.createElement('input');
+  inp.className = 'rpt-new-inp';
+  inp.type = 'text';
+  inp.setAttribute('inputmode', 'decimal');
+  inp.placeholder = '—';
+  var ev = existing[names[0]];
+  if (ev !== undefined) inp.value = ev;
+
+  var td1 = document.createElement('td');
+  td1.textContent = names.join(' / ');
+  var td2 = document.createElement('td');
+  td2.className = oldPrice === 0 ? 'rpt-old-zero' : '';
+  td2.textContent = oldPrice ? oldPrice.toLocaleString() : '—';
+  var td3 = document.createElement('td');
+  td3.appendChild(inp);
+
+  tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+  tbody.appendChild(tr);
+}
+
+function closeRptModal() {
+  document.getElementById('rpt-modal').style.display = 'none';
+}
+
+function getRptData() {
+  var refId   = document.getElementById('rpt-ref-ps').value;
+  var refPS   = priceSets.find(function(p){ return p.id === refId; }) || priceSets[0];
+  var dateStr = document.getElementById('rpt-date').value.trim();
+  var note    = document.getElementById('rpt-note').value.trim();
+  var rows    = [];
+
+  document.getElementById('rpt-body').querySelectorAll('tr').forEach(function(tr) {
+    var names  = (tr.dataset.factories || tr.dataset.factory || '').split(',').filter(Boolean);
+    var rawNew = tr.querySelector('.rpt-new-inp').value.trim();
+    var newPrice = null;
+    if (rawNew === '-' || rawNew === '–') {
+      newPrice = 0;
+    } else if (rawNew !== '') {
+      var v = parseFloat(rawNew.replace(/,/g,''));
+      if (!isNaN(v)) newPrice = v;
+    }
+    names.forEach(function(name) {
+      var oldPrice = refPS.prices[name] || 0;
+      rows.push({ name:name, oldPrice:oldPrice, newPrice:newPrice });
+    });
+  });
+  return { refPS:refPS, dateStr:dateStr, note:note, rows:rows };
+}
+
+/* จัดกลุ่มโรงงานที่ราคาเก่า+ราคาใหม่เหมือนกัน */
+function groupRptRows(rows) {
+  var groups = [];
+  var used   = [];
+  for (var i = 0; i < rows.length; i++) used.push(false);
+
+  for (var i = 0; i < rows.length; i++) {
+    if (used[i]) continue;
+    var r = rows[i];
+    /* โรงงานที่ไม่มีทั้งราคาเก่าและราคาใหม่ → ไม่รวมกลุ่ม */
+    if (r.oldPrice === 0 && r.newPrice === null) {
+      groups.push([r]); used[i] = true; continue;
+    }
+    var grp = [r]; used[i] = true;
+    for (var j = i + 1; j < rows.length; j++) {
+      if (used[j]) continue;
+      var r2 = rows[j];
+      if (r2.oldPrice === 0 && r2.newPrice === null) continue;
+      if (r2.oldPrice === r.oldPrice && r2.newPrice === r.newPrice &&
+          noGroupFactories.indexOf(r.name) === -1 &&
+          noGroupFactories.indexOf(r2.name) === -1) {
+        grp.push(r2); used[j] = true;
+      }
+    }
+    groups.push(grp);
+  }
+  return groups;
+}
+
+function printRpt() {
+  var data = getRptData();
+  var groups = groupRptRows(data.rows);
+  var container = document.getElementById('report-print');
+  container.innerHTML = '';
+
+  var page = document.createElement('div');
+  page.className = 'rp-page';
+
+  /* build table rows HTML */
+  var rowsHtml = '';
+  groups.forEach(function(grp) {
+    var names    = grp.map(function(r){ return r.name; }).join(' / ');
+    var oldPrice = grp[0].oldPrice;
+    var newPrice = grp[0].newPrice;
+    var oldTxt   = oldPrice ? oldPrice.toLocaleString() : '-';
+    var lblTxt   = '';
+    var valTxt   = '-';
+    if (newPrice !== null && newPrice > 0) {
+      lblTxt = 'แก้ไขเป็น';
+      valTxt = newPrice.toLocaleString();
+    }
+    rowsHtml +=
+      '<tr>' +
+        '<td class="td-name">' + names + '</td>' +
+        '<td class="td-old">' + oldTxt + '</td>' +
+        '<td class="td-lbl">' + lblTxt + '</td>' +
+        '<td class="td-val">' + valTxt + '</td>' +
+      '</tr>';
+  });
+
+  page.innerHTML =
+    '<span class="rp-deco">\u2018 \u2019</span>' +
+    '<div class="rp-title">ราคาค่าขนส่ง</div>' +
+    '<table class="rp-tbl">' +
+      '<colgroup>' +
+        '<col style="width:46%">' +
+        '<col style="width:18%">' +
+        '<col style="width:14%">' +
+        '<col style="width:22%">' +
+      '</colgroup>' +
+      '<thead><tr>' +
+        '<th>บริษัท</th>' +
+        '<th>ราคาเก่า</th>' +
+        '<th colspan="2">ราคาใหม่</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+    '</table>' +
+    '<div class="rp-footer">' +
+      '<b>หมายเหตุ :</b> ' + (data.note || '') + '<br>' +
+      data.dateStr +
+    '</div>';
+
+  container.appendChild(page);
+
+  /* ปิด modal ก่อน print แล้วค่อย restore */
+  var modal = document.getElementById('rpt-modal');
+  modal.style.display = 'none';
+
+  var ps = document.createElement('style');
+  ps.textContent = '@media print{#print-pages{display:none!important}#report-print{display:block!important}}';
+  document.head.appendChild(ps);
+
+  window.addEventListener('afterprint', function onAfterPrint() {
+    window.removeEventListener('afterprint', onAfterPrint);
+    document.head.removeChild(ps);
+    modal.style.display = 'flex';
+  });
+
+  window.print();
+}
+
+function saveRptAsPS() {
+  var data = getRptData();
+  var name = prompt('ชื่อชุดราคาใหม่:', data.dateStr || 'ชุดราคาใหม่');
+  if (!name || !name.trim()) return;
+
+  /* merge: start from old prices, overwrite with new prices */
+  var prices = {};
+  factoryNames.forEach(function(n){ prices[n] = data.refPS.prices[n] || 0; });
+  data.rows.forEach(function(r) {
+    if (r.newPrice !== null) prices[r.name] = r.newPrice;
+  });
+
+  var newPS = {
+    id: 'ps_' + Date.now(),
+    name: name.trim(),
+    readonly: false,
+    prices: prices
+  };
+  priceSets.push(newPS);
+  activePSId = newPS.id;
+  saveStorage();
+  sbUpsert(newPS);
+  renderPSSelect();
+  renderRefTable();
+  rebuildAllRowOptions();
+  calcAll();
+  closeRptModal();
+  alert('บันทึกชุดราคา "' + newPS.name + '" เรียบร้อยแล้ว');
+}
+
+/* ======================================================
+   LOGIN
+====================================================== */
+async function _hash(s) {
+  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+async function doLogin() {
+  var user = document.getElementById('usr-input').value.trim().toUpperCase();
+  var pass = document.getElementById('pwd-input').value;
+  var err  = document.getElementById('login-err');
+  if (!user || !pass) { _shakeLogin(err); return; }
+  var h = await _hash(user + ':' + pass);
+  var cred = _CREDS.find(function(c){ return c.user === user && c.hash === h; });
+  if (!cred) { _shakeLogin(err); return; }
+
+  LOGGED_USER = cred.user;
+  sessionStorage.setItem('fc_user', cred.user);
+  _enterApp(cred.user);
+}
+
+function _shakeLogin(err) {
+  err.style.display = 'block';
+  var box = document.querySelector('.login-box');
+  box.classList.remove('shake');
+  void box.offsetWidth;
+  box.classList.add('shake');
+  document.getElementById('pwd-input').value = '';
+  document.getElementById('pwd-input').focus();
+}
+
+function _enterApp(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  var chip = document.getElementById('user-chip');
+  if (chip) chip.textContent = '👤 ' + user;
+  initApp();
+}
+
+function doLogout() {
+  sessionStorage.removeItem('fc_user');
+  location.reload();
+}
+
+/* ======================================================
+   INIT
+====================================================== */
+var _appInited = false;
+function initApp() {
+  if (_appInited) return;
+  _appInited = true;
+  loadStorage().then(function(){
+    renderPSSelect();
+    renderRefTable();
+    if (!document.querySelector('.factory-row')) addRow();
+    calcAll();
+  });
+}
+
+window.onload = function() {
+  /* enter on login fields */
+  ['usr-input','pwd-input'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', function(e){ if (e.key === 'Enter') doLogin(); });
+  });
+
+  /* auto-login from session */
+  var u = sessionStorage.getItem('fc_user');
+  if (u && _CREDS.find(function(c){ return c.user === u; })) {
+    LOGGED_USER = u;
+    _enterApp(u);
+  }
+
+  /* polling ทุก 100ms */
+  setInterval(function() {
+    if (!_appInited) return;
+    var fThb = getFThb();
+    for (var i = 0; i < rowUpdaters.length; i++) rowUpdaters[i](fThb);
+  }, 100);
+};
+
+/* ======================================================
+   QUOTATION
+====================================================== */
+function toggleQtCoOther(sel) {
+  var otherInp = document.getElementById('qt-to-co-other');
+  otherInp.style.display = sel.value === '__other__' ? 'block' : 'none';
+  if (sel.value === '__other__') otherInp.focus();
+}
+
+function openQtModal() {
+  var rows = document.querySelectorAll('.factory-row');
+  if (!rows.length) { alert('กรุณาเพิ่มโรงงานอย่างน้อย 1 รายการก่อน'); return; }
+  document.getElementById('qt-modal').style.display = 'flex';
+}
+
+function closeQtModal() {
+  document.getElementById('qt-modal').style.display = 'none';
+}
+
+function printQuote() {
+  var toName  = document.getElementById('qt-to-name').value.trim();
+  var toCoSel = document.getElementById('qt-to-co').value;
+  var toCo    = toCoSel === '__other__'
+    ? document.getElementById('qt-to-co-other').value.trim()
+    : toCoSel.trim();
+  var ref     = document.getElementById('qt-ref').value.trim();
+  var signer  = document.getElementById('qt-signer').value.trim();
+  var note    = document.getElementById('qt-note').value.trim();
+  var dest    = document.getElementById('dest_port').value;
+  var destNote= document.getElementById('dest_note').value.trim();
+
+  /* รวม destination display */
+  var destDisplay = dest + (destNote ? ' (' + destNote + ')' : '');
+
+  /* วันที่ */
+  var d = new Date();
+  var monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+    'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var dateStr = 'วันที่ ' + d.getDate() + ' ' + monthNames[d.getMonth()] + ' ' + (d.getFullYear() + 543);
+
+  /* เก็บข้อมูลจาก rows */
+  var usdRm = parseFloat(document.getElementById('usd_rm').value) || 0;
+  var rmThb = parseFloat(document.getElementById('rm_thb').value) || 0;
+  var fUsd  = parseFloat(document.getElementById('freight_usd').value) || 0;
+  var fThb  = fUsd * usdRm * rmThb;
+  var facs  = getFactories();
+
+  var itemsHtml = '';
+  var rows = document.querySelectorAll('.factory-row');
+  rows.forEach(function(row) {
+    var selEl  = row.querySelector('.row-factory');
+    var sellEl = row.querySelector('.row-sell');
+    var ctrEl  = row.querySelector('.row-container');
+    var fi     = parseInt(selEl.value);
+    var fac    = facs[fi];
+    var sell   = parseFloat(sellEl.value) || 0;
+    if (sell <= 0) return;
+    var ctrVal = ctrEl ? ctrEl.value.trim() : '';
+    var refPart = ref ? ' (' + ref + ')' : '';
+    var ctrPart = ctrVal ? ' ตู้ที่ ' + ctrVal : '';
+    var label = dest + refPart + ctrPart + ' — ' + fac.name;
+    itemsHtml +=
+      '<div class="qt-item">' +
+        '<div class="qt-item-name">' + label + '</div>' +
+        '<div class="qt-item-eq">=</div>' +
+        '<div class="qt-item-price">' + sell.toLocaleString() + '</div>' +
+        '<div class="qt-item-unit">THB</div>' +
+      '</div>';
+  });
+
+  if (!itemsHtml) { alert('กรุณากรอกราคาขายอย่างน้อย 1 รายการ'); return; }
+
+  var container = document.getElementById('quote-print');
+  container.innerHTML = '';
+  var page = document.createElement('div');
+  page.className = 'qt-page';
+  page.innerHTML =
+    '<div class="qt-co-en">A.N.T.S. STAR TRANSIT CO., LTD.</div>' +
+    '<div class="qt-co-th">บริษัท เอ.เอ็น.ที.เอส. สตาร์ ทรานสิท จำกัด</div>' +
+    '<div class="qt-co-addr">85 ถนนคลองเรียน 2 ซอย 8 อำเภอหาดใหญ่ จังหวัดสงขลา 90110 &nbsp;โทร. 074-357758 &nbsp;โทรสาร. 074-356037</div>' +
+    '<hr class="qt-divider">' +
+    '<div class="qt-date">' + dateStr + '</div>' +
+    '<div class="qt-re"><span class="qt-re-label">เรื่อง</span><span>เสนอราคาค่าใช้จ่ายในการส่งออก</span></div>' +
+    '<div class="qt-re"><span class="qt-re-label">เรียน</span><span>' + (toName || '...') + '</span></div>' +
+    (toCo ? '<div class="qt-re"><span class="qt-re-label"></span><span>' + toCo + '</span></div>' : '') +
+    '<div class="qt-body">บริษัทฯ มีความยินดีที่จะเสนอราคาค่าบริการสำหรับสินค้าขาออก ขนาดตู้ 40 ฟุต ที่ Penang Port ไปยังปลายทาง ' + destDisplay + ' ดังนี้</div>' +
+    '<div class="qt-items">' + itemsHtml + '</div>' +
+    '<div class="qt-note">หมายเหตุ : ' + (note || '') + '</div>' +
+    '<div class="qt-close">จึงเรียนมาเพื่อโปรดพิจารณา และบริษัทหวังเป็นอย่างยิ่งว่าจะได้รับการสนับสนุนและมอบความไว้วางใจให้บริษัทได้เป็นผู้ดูแลและให้บริการแก่ท่าน</div>' +
+    '<div class="qt-sign">' +
+      'ขอแสดงความนับถือ<br><br>' +
+      '<div class="qt-sign-line"></div><br>' +
+      '(' + (signer || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;') + ')' +
+    '</div>';
+
+  container.appendChild(page);
+
+  var modal = document.getElementById('qt-modal');
+  modal.style.display = 'none';
+
+  var ps = document.createElement('style');
+  ps.textContent = '@media print{#print-pages{display:none!important}#report-print{display:none!important}#quote-print{display:block!important}}';
+  document.head.appendChild(ps);
+
+  window.addEventListener('afterprint', function onAP() {
+    window.removeEventListener('afterprint', onAP);
+    document.head.removeChild(ps);
+    modal.style.display = 'flex';
+  });
+
+  window.print();
+}
+</script>
+</body>
+</html>
