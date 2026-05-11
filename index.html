@@ -289,8 +289,9 @@ select.row-fi{cursor:pointer;appearance:none}
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <div class="live-badge" id="sync-badge"><div class="live-dot" id="sync-dot"></div><span id="sync-text">SYNCING</span></div>
+      <div class="live-badge" id="sync-badge" onclick="refreshFromSupabase()" style="cursor:pointer" title="คลิกเพื่อ refresh จาก Supabase"><div class="live-dot" id="sync-dot"></div><span id="sync-text">SYNCING</span></div>
       <span id="user-chip" style="font-size:11px;color:var(--text2);font-family:var(--mono);padding:0 6px"></span>
+      <button class="tbtn" style="background:#0891b2" onclick="refreshFromSupabase()" title="ดึงชุดราคาล่าสุดจาก Supabase">🔄 Refresh</button>
       <button class="tbtn" style="background:var(--green)" onclick="calcAll()">⟳ คำนวณ</button>
       <button class="tbtn" style="background:#7c3aed" onclick="openRptModal()">📋 รายงานราคา</button>
       <button class="tbtn" style="background:#b45309" onclick="openQtModal()">📄 ใบเสนอราคา</button>
@@ -706,6 +707,36 @@ function saveStorage() {
   var user = priceSets.filter(function(p){ return !p.readonly; });
   _cacheSave(user);
   _activeSave(activePSId);
+}
+
+/* ปุ่ม Refresh — ดึงชุดราคาล่าสุดจาก Supabase + render dropdown ใหม่ */
+function refreshFromSupabase() {
+  setSync('syncing');
+  return sbFetchAll().then(function(remoteSets) {
+    priceSets = [builtinPS].concat(remoteSets);
+    _cacheSave(remoteSets);
+    /* ถ้า activePSId ที่ใช้อยู่ไม่มีใน remote → fall back to ล่าสุด */
+    if (!priceSets.find(function(p){ return p.id === activePSId; })) {
+      activePSId = remoteSets.length ? remoteSets[remoteSets.length-1].id : BUILTIN_ID;
+      _activeSave(activePSId);
+    }
+    renderPSSelect();
+    renderRefTable();
+    rebuildAllRowOptions();
+    calcAll();
+    setSync('synced');
+    /* feedback สั้น ๆ ให้รู้ว่ารีเฟรชเสร็จ */
+    var badge = document.getElementById('sync-badge');
+    if (badge) {
+      var orig = badge.style.transform;
+      badge.style.transform = 'scale(1.1)';
+      setTimeout(function(){ badge.style.transform = orig || ''; }, 200);
+    }
+  }).catch(function(e){
+    console.error('refresh failed', e);
+    setSync('error');
+    alert('Refresh ล้มเหลว: ' + (e.message || e));
+  });
 }
 
 /* ======================================================
