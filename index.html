@@ -531,8 +531,8 @@ select.row-fi{cursor:pointer;appearance:none}
    CONFIG
 ====================================================== */
 var SB_URL = 'https://eurnevjtzxansothqney.supabase.co';
-/* key เก็บแยกชิ้นเพื่อ bypass GitHub secret scanner — concatenate ตอน runtime */
-var SB_KEY = ['sb', 'secret', 'gs0Q9WLkOMcFeDXlWOoHpA', 'XiR18c0y'].join('_');
+/* publishable key — safe to use in browser (Supabase block secret keys via User-Agent) */
+var SB_KEY = 'sb_publishable_SOknLoFYH4_kpCEWSWP-TQ_L9L4PR9o';
 var SB_TABLE = 'freight_price_sets';
 var SB_HEADERS = {
   'apikey': SB_KEY,
