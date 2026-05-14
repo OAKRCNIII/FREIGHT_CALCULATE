@@ -279,8 +279,141 @@ select.row-fi{cursor:pointer;appearance:none}
   .print-page{min-height:297mm;padding:14mm}
   .no-print{display:none!important}
 }
+/* topbar layout: status + actions to the right */
+.topbar .tl{margin-right:auto}
+.topbar-status{display:flex;align-items:center;gap:8px}
+.topbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.topbar-actions .btn-icon{display:inline-block}
+.topbar-actions .btn-label{display:inline}
+
 @media(max-width:900px){.main-body{grid-template-columns:1fr}.ref-card{display:none}}
 @media(max-width:700px){.shared-grid{grid-template-columns:repeat(3,1fr)}.main{padding:14px}}
+
+/* ════════════════════════════════════════════════════════
+   📱 MOBILE LAYOUT (iPhone / phones) — usable with one thumb
+   ════════════════════════════════════════════════════════ */
+@media(max-width:600px){
+  /* Compact topbar */
+  .topbar{padding:10px 14px;gap:8px;flex-wrap:wrap}
+  .tsub{display:none}
+  .ttitle{font-size:13px}
+  .tdot{width:7px;height:7px}
+  .topbar-status{gap:6px;flex-shrink:0}
+  #user-chip{display:none}
+  .topbar-status .tbtn{padding:7px 11px;font-size:11px}
+
+  /* Action buttons → fixed bottom bar (thumb zone) */
+  .topbar-actions{
+    position:fixed;bottom:0;left:0;right:0;
+    background:var(--s1);border-top:1px solid var(--border);
+    padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom));
+    z-index:50;gap:4px;flex-wrap:nowrap;justify-content:space-around;
+    box-shadow:0 -2px 12px rgba(15,23,42,0.08)
+  }
+  .topbar-actions .tbtn{
+    flex:1;flex-direction:column;gap:2px;
+    padding:6px 4px;font-size:10px;min-width:0;min-height:50px;
+    justify-content:center;line-height:1.2
+  }
+  .topbar-actions .btn-icon{font-size:20px}
+  .topbar-actions .btn-label{font-size:9px;white-space:nowrap}
+  /* hide auto-running "คำนวณ" button on mobile (polls every 100ms anyway) */
+  .topbar-actions .calc-btn{display:none}
+
+  /* Main padding for bottom bar */
+  .main{padding:14px;padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+
+  /* Shared inputs: 2 columns, bigger touch targets */
+  .shared-grid{grid-template-columns:repeat(2,1fr)!important;gap:12px}
+  .fi{padding:12px 14px;font-size:15px;min-height:44px}
+  .fl{font-size:10px}
+
+  /* Cards more compact */
+  .card{padding:14px;border-radius:14px}
+
+  /* Price-set bar: stack vertically */
+  .ps-bar{flex-direction:column;align-items:stretch;gap:10px}
+  .ps-bar .ps-label{display:none}
+  .ps-select{width:100%;padding:12px;font-size:14px;min-height:46px}
+  .ps-bar > div.ps-btns-wrap{display:flex;gap:6px}
+  .ps-btn{flex:1;padding:11px 8px;font-size:11px;min-height:42px}
+
+  /* Factory rows → CARDS (mobile) */
+  .rows-wrap{overflow-x:visible}
+  .rows-table{min-width:0;display:block}
+  .rows-table thead{display:none}
+  .rows-table tbody{display:block}
+  .rows-table tr.factory-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-areas:
+      "factory factory"
+      "price   container"
+      "fee     cost"
+      "profit  delete";
+    gap:10px;
+    background:var(--s2);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:12px
+  }
+  .rows-table tr.factory-row td{padding:0;border:none}
+  .rows-table tr.factory-row td:nth-child(1){grid-area:factory}
+  .rows-table tr.factory-row td:nth-child(2){grid-area:price}
+  .rows-table tr.factory-row td:nth-child(3){grid-area:container}
+  .rows-table tr.factory-row td:nth-child(4){grid-area:fee}
+  .rows-table tr.factory-row td:nth-child(5){grid-area:cost}
+  .rows-table tr.factory-row td:nth-child(6){grid-area:profit}
+  .rows-table tr.factory-row td:nth-child(7){grid-area:delete;display:flex;justify-content:flex-end;align-items:center}
+
+  /* Labels above each input/value via data-label */
+  .rows-table tr.factory-row td[data-label]::before{
+    content:attr(data-label);
+    display:block;
+    font-size:10px;
+    color:var(--text2);
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    margin-bottom:4px;
+    font-weight:500
+  }
+  /* Bigger inputs, easier to tap */
+  .row-fi{padding:10px 12px;font-size:14px;min-height:42px}
+  .row-auto{text-align:left;font-size:15px;padding:6px 0;display:block;font-weight:600}
+  .row-auto.row-profit{font-size:18px}
+
+  /* Hover bg from desktop should be off on mobile */
+  .rows-table tbody tr:hover td{background:transparent}
+
+  /* Add row button bigger */
+  .add-btn{padding:14px;font-size:13px;min-height:50px;margin-top:8px}
+
+  /* Delete button bigger */
+  .del-btn{width:40px;height:40px;font-size:22px}
+
+  /* Login: better on mobile */
+  .login-box{width:88vw;max-width:360px;padding:32px 26px}
+  .login-input{padding:13px 16px;font-size:16px;min-height:46px}
+  .login-btn{padding:13px;font-size:15px;min-height:48px}
+
+  /* Modals: bottom sheet style */
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal-box{border-radius:18px 18px 0 0;max-height:92vh;width:100%;max-width:none}
+  .modal-head{padding:14px 18px}
+  .modal-title{font-size:15px}
+  .modal-close{width:36px;height:36px;font-size:24px}
+  .modal-body{padding:14px 18px}
+  .modal-foot{padding:12px 18px;padding-bottom:max(12px,env(safe-area-inset-bottom));flex-wrap:wrap}
+  .modal-foot button{flex:1;padding:13px;min-height:46px;font-size:13px}
+
+  /* Modal price table inside */
+  .ptbl td:first-child{font-size:11px}
+  .p-inp{width:90px;padding:8px;font-size:14px;min-height:36px}
+
+  /* Footer hide to save space */
+  .footer{display:none}
+}
 </style>
 </head>
 <body>
@@ -314,15 +447,17 @@ select.row-fi{cursor:pointer;appearance:none}
         <div class="tsub">คำนวณราคาขาย · ค่าระวาง &amp; ขนส่ง · RCN Logistics</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px">
+    <div class="topbar-status">
       <div class="live-badge" id="sync-badge" onclick="refreshFromSupabase()" style="cursor:pointer" title="คลิกเพื่อ refresh จาก Supabase"><div class="live-dot" id="sync-dot"></div><span id="sync-text">SYNCING</span></div>
       <span id="user-chip" style="font-size:11px;color:var(--text2);font-family:var(--mono);padding:0 6px"></span>
-      <button class="tbtn" style="background:#0891b2" onclick="refreshFromSupabase()" title="ดึงชุดราคาล่าสุดจาก Supabase">🔄 Refresh</button>
-      <button class="tbtn" style="background:var(--green)" onclick="calcAll()">⟳ คำนวณ</button>
-      <button class="tbtn" style="background:#7c3aed" onclick="openRptModal()">📋 รายงานราคา</button>
-      <button class="tbtn" style="background:#b45309" onclick="openQtModal()">📄 ใบเสนอราคา</button>
-      <button class="tbtn" onclick="doPrint()">🖨 Print PDF</button>
       <button class="tbtn" style="background:#64748b" onclick="doLogout()" title="ออกจากระบบ">⎋ ออก</button>
+    </div>
+    <div class="topbar-actions">
+      <button class="tbtn" style="background:#0891b2" onclick="refreshFromSupabase()" title="ดึงชุดราคาล่าสุดจาก Supabase"><span class="btn-icon">🔄</span><span class="btn-label"> Refresh</span></button>
+      <button class="tbtn calc-btn" style="background:var(--green)" onclick="calcAll()"><span class="btn-icon">⟳</span><span class="btn-label"> คำนวณ</span></button>
+      <button class="tbtn" style="background:#7c3aed" onclick="openRptModal()"><span class="btn-icon">📋</span><span class="btn-label"> รายงานราคา</span></button>
+      <button class="tbtn" style="background:#b45309" onclick="openQtModal()"><span class="btn-icon">📄</span><span class="btn-label"> ใบเสนอราคา</span></button>
+      <button class="tbtn" onclick="doPrint()"><span class="btn-icon">🖨</span><span class="btn-label"> Print PDF</span></button>
     </div>
   </div>
 
@@ -336,9 +471,11 @@ select.row-fi{cursor:pointer;appearance:none}
       <div class="ps-bar">
         <span class="ps-label">ชุดราคาขนส่ง</span>
         <select class="ps-select" id="ps-select" onchange="switchPS(this.value)"></select>
-        <button class="ps-btn ps-btn-edit" onclick="openModal('edit')">✏️ แก้ไข</button>
-        <button class="ps-btn ps-btn-new" onclick="openModal('new')">+ ใหม่</button>
-        <button class="ps-btn ps-btn-del" id="ps-del-btn" onclick="deletePS()">🗑 ลบ</button>
+        <div class="ps-btns-wrap">
+          <button class="ps-btn ps-btn-edit" onclick="openModal('edit')">✏️ แก้ไข</button>
+          <button class="ps-btn ps-btn-new" onclick="openModal('new')">+ ใหม่</button>
+          <button class="ps-btn ps-btn-del" id="ps-del-btn" onclick="deletePS()">🗑 ลบ</button>
+        </div>
       </div>
 
       <div class="shared-grid">
@@ -872,14 +1009,16 @@ function addRow() {
   var row = document.createElement('tr');
   row.className = 'factory-row rowfade';
 
-  /* --- cells --- */
+  /* --- cells (data-label attrs ใช้แสดงชื่อบน mobile) --- */
   var td1 = document.createElement('td');
+  td1.setAttribute('data-label', 'โรงงาน');
   var sel = document.createElement('select');
   sel.className = 'row-fi row-factory';
   sel.innerHTML = buildOptions();
   td1.appendChild(sel);
 
   var td2 = document.createElement('td');
+  td2.setAttribute('data-label', 'ราคาขาย (THB)');
   var inp = document.createElement('input');
   inp.className = 'row-fi row-sell';
   inp.type = 'text';
@@ -889,6 +1028,7 @@ function addRow() {
   td2.appendChild(inp);
 
   var td3 = document.createElement('td');
+  td3.setAttribute('data-label', 'ตู้ที่');
   var inpCtr = document.createElement('input');
   inpCtr.className = 'row-fi row-container';
   inpCtr.type = 'text';
@@ -897,18 +1037,21 @@ function addRow() {
   td3.appendChild(inpCtr);
 
   var td4 = document.createElement('td');
+  td4.setAttribute('data-label', 'ค่าขนส่ง');
   var spTr = document.createElement('span');
   spTr.className = 'row-auto row-tr';
   spTr.textContent = '—';
   td4.appendChild(spTr);
 
   var td5 = document.createElement('td');
+  td5.setAttribute('data-label', 'ต้นทุนรวม');
   var spCost = document.createElement('span');
   spCost.className = 'row-auto row-cost';
   spCost.textContent = '0';
   td5.appendChild(spCost);
 
   var td6 = document.createElement('td');
+  td6.setAttribute('data-label', 'กำไร / ขาดทุน');
   var spProfit = document.createElement('span');
   spProfit.className = 'row-auto row-profit profit-zero';
   spProfit.textContent = '0';
