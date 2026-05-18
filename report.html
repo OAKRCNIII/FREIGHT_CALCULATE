@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายงานคำนวณราคา - RCN Logistics</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'IBM Plex Sans Thai',sans-serif;color:#111827;background:#f0f2f7;line-height:1.5;font-size:13px}
+.wrap{max-width:820px;margin:0 auto;padding:16px}
+.print-page{width:100%;min-height:100vh;padding:24px 28px;background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.04);display:flex;flex-direction:column;gap:16px}
+.pp-header{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:12px;border-bottom:2.5px solid #2563eb;flex-wrap:wrap;gap:8px}
+.pp-logo{font-size:17px;font-weight:600}
+.pp-sub{font-size:11px;color:#6b7280;font-family:'IBM Plex Mono',monospace}
+.pp-factory{font-size:24px;font-weight:600;color:#2563eb}
+.pp-section{background:#f5f7fb;border-radius:10px;padding:14px 16px}
+.pp-sec-title{font-size:9px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.pp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pp-item label{display:block;font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.pp-item span{font-size:15px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#111827}
+.pp-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+.pp-row:last-child{border-bottom:none}
+.pp-row span:last-child{font-family:'IBM Plex Mono',monospace;color:#111827}
+.pp-total{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 4px;font-size:14px;font-weight:600;border-top:2px solid #dde2ee;margin-top:4px}
+.pp-total span:last-child{font-family:'IBM Plex Mono',monospace;color:#2563eb;font-size:17px}
+.pp-profit-box{border-radius:10px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center}
+.pp-profit-box.pos{background:#d1fae5;border:1px solid #6ee7b7}
+.pp-profit-box.neg{background:#fee2e2;border:1px solid #fca5a5}
+.pp-profit-box.zero{background:#f3f4f6;border:1px solid #e5e7eb}
+.pp-profit-label{font-size:12px;color:#374151;font-weight:500}
+.pp-profit-val{font-size:30px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.pp-profit-val.pos{color:#059669}
+.pp-profit-val.neg{color:#dc2626}
+.pp-profit-val.zero{color:#6b7280}
+.pp-date{font-size:10px;color:#9ca3af;font-family:'IBM Plex Mono',monospace;margin-top:auto;text-align:right}
+.sell-box{background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:14px 16px}
+.sell-box .pp-sec-title{color:#1d4ed8}
+.sell-num{font-size:32px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#2563eb;text-align:right}
+.sell-num small{font-size:16px;font-weight:500;color:#6b7280}
+.pdf-bar{position:sticky;top:0;background:#0f2a52;padding:12px 16px;display:flex;gap:8px;align-items:center;justify-content:space-between;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.18);flex-wrap:wrap}
+.pdf-bar-label{color:#fff;font-size:12px;font-weight:500}
+.pdf-bar-hint{color:#cbd5e1;font-size:10px}
+.pdf-btn{background:#dc2626;color:#fff;border:none;padding:11px 22px;border-radius:8px;cursor:pointer;font-family:'IBM Plex Sans Thai',sans-serif;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(220,38,38,.4)}
+.pdf-btn:hover{background:#b91c1c}
+.pdf-btn:active{transform:scale(.97)}
+.note-box{background:#fefce8;border:1.5px solid #fde047;border-radius:10px;padding:14px 16px}
+.note-box .pp-sec-title{color:#854d0e}
+.note-box .note-text{font-size:13px;color:#713f12;line-height:1.6}
+@media print{
+  body{background:#fff}.wrap{padding:0;max-width:none}.print-page{box-shadow:none;border-radius:0;padding:14mm}
+  .pdf-bar{display:none}
+}
+@media(max-width:560px){.pp-grid{grid-template-columns:repeat(2,1fr)}.print-page{padding:18px}}
+</style>
+</head>
+<body>
+<div class="pdf-bar">
+  <div>
+    <div class="pdf-bar-label">📄 รายงานคำนวณราคา</div>
+    <div class="pdf-bar-hint" id="pdf-hint">กดปุ่มแล้วเลือก "บันทึกเป็น PDF" / Save as PDF</div>
+  </div>
+  <button class="pdf-btn" onclick="window.print()">📥 บันทึก PDF</button>
+</div>
+<div class="wrap"><div class="print-page" id="report"></div></div>
+
+<script>
+const FIXED_COST = 20600;
+
+function fmt(n){ return Math.round(n).toLocaleString('en-US'); }
+function escapeHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function thaiDate(d){
+  const m=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  return d.getDate()+' '+m[d.getMonth()]+' '+(d.getFullYear()+543);
+}
+
+(function(){
+  const sp = new URLSearchParams(location.search);
+  const p = {
+    factory: sp.get('factory') || '(ไม่ระบุ)',
+    destination: sp.get('destination') || 'NANSHA',
+    destNote: sp.get('dest_note') || '',
+    sell: parseFloat(sp.get('sell')||'0'),
+    freightUsd: parseFloat(sp.get('freight_usd')||'0'),
+    usdRm: parseFloat(sp.get('usd_rm')||'4.5'),
+    rmThb: parseFloat(sp.get('rm_thb')||'8.3'),
+    transport: parseFloat(sp.get('transport')||'0'),
+    priceSet: sp.get('price_set') || '',
+    container: sp.get('container') || '',
+  };
+
+  document.title = p.factory + ' — รายงานคำนวณ';
+
+  const freightRm = p.freightUsd * p.usdRm;
+  const freightThb = freightRm * p.rmThb;
+  const cost = freightThb + FIXED_COST + p.transport;
+  const profit = p.sell - cost;
+  const cls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'zero';
+  const label = profit > 0 ? 'กำไร' : profit < 0 ? 'ขาดทุน' : 'เท่าทุน';
+  const dateStr = thaiDate(new Date());
+  const f = escapeHtml;
+
+  let html = `
+    <div class="pp-header">
+      <div><div class="pp-logo">Freight Price Calculator</div></div>
+      <div class="pp-sub" style="text-align:right">
+        RCN Logistics · ปลายทาง: ${f(p.destination)}${p.priceSet ? ' · ชุดราคา: ' + f(p.priceSet) : ''}
+      </div>
+    </div>
+    <div class="pp-factory">${f(p.factory)} , ${f(p.destination)}${p.destNote ? ' (' + f(p.destNote) + ')' : ''}</div>
+    <div class="pp-section">
+      <div class="pp-sec-title">อัตราแลกเปลี่ยน &amp; ค่าระวาง</div>
+      <div class="pp-grid">
+        <div class="pp-item"><label>USD / RM</label><span>${p.usdRm.toFixed(2)}</span></div>
+        <div class="pp-item"><label>RM / THB</label><span>${p.rmThb.toFixed(2)}</span></div>
+        <div class="pp-item"><label>ค่าระวางเรือ (USD)</label><span>${fmt(p.freightUsd)}</span></div>
+        <div class="pp-item"><label>ค่าระวางเรือ (RM)</label><span>${fmt(freightRm)}</span></div>
+        <div class="pp-item"><label>ค่าระวางเรือ (THB)</label><span>${fmt(freightThb)}</span></div>
+        <div class="pp-item"><label>ค่าขนส่ง (THB)</label><span>${p.transport ? fmt(p.transport) : '—'}</span></div>
+      </div>
+    </div>
+    <div class="pp-section">
+      <div class="pp-sec-title">รายละเอียดต้นทุน</div>
+      <div class="pp-row"><span>ค่าระวางเรือ (THB)</span><span>${fmt(freightThb)}</span></div>
+      <div class="pp-row"><span>ค่าดำเนินการ</span><span>${fmt(FIXED_COST)}</span></div>
+      <div class="pp-row"><span>ค่าขนส่งรถบรรทุก</span><span>${p.transport ? fmt(p.transport) : '—'}</span></div>
+      <div class="pp-total"><span>รวมต้นทุน</span><span>${fmt(cost)}</span></div>
+    </div>`;
+
+  if (p.sell > 0) {
+    html += `
+    <div class="pp-section sell-box">
+      <div class="pp-sec-title">ราคาขายลูกค้า</div>
+      <div class="sell-num">${fmt(p.sell)} <small>THB</small></div>
+    </div>
+    <div class="pp-profit-box ${cls}">
+      <div class="pp-profit-label">${label}</div>
+      <div class="pp-profit-val ${cls}">${profit >= 0 ? '+' : ''}${fmt(profit)} THB</div>
+    </div>`;
+  } else {
+    html += `
+    <div class="pp-section note-box">
+      <div class="pp-sec-title">หมายเหตุ</div>
+      <div class="note-text">
+        ⓘ รายงานนี้แสดงเฉพาะ <strong>ต้นทุน</strong> — ยังไม่ได้กรอกราคาขาย<br>
+        คำนวณกำไร/ขาดทุน: ส่งข้อความใหม่ใน LINE เช่น "คำนวณ ${f(p.factory)} 35000"
+      </div>
+    </div>`;
+  }
+
+  html += `<div class="pp-date">พิมพ์เมื่อ ${f(dateStr)}${p.container ? ' · ตู้ที่ ' + f(p.container) : ''}</div>`;
+
+  document.getElementById('report').innerHTML = html;
+
+  // platform-aware PDF hint
+  const ua = navigator.userAgent;
+  const hint = document.getElementById('pdf-hint');
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    hint.textContent = 'กดปุ่ม → เลือก "บันทึกเป็น PDF" → "บันทึกในไฟล์"';
+  } else if (/Android/.test(ua)) {
+    hint.textContent = 'กดปุ่ม → เลือก "บันทึกเป็น PDF" ในเครื่องพิมพ์';
+  }
+})();
+</script>
+</body>
+</html>
