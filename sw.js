@@ -2,7 +2,7 @@
  * Cache HTML + manifest + icons so app loads offline / faster
  * Supabase API calls always go through network (not cached) */
 
-const CACHE_NAME = 'freight-calc-v11';
+const CACHE_NAME = 'freight-calc-v12';
 const APP_SHELL = [
   './',
   './index.html',
