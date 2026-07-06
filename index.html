@@ -508,13 +508,15 @@ select.row-fi{cursor:pointer;appearance:none}
         </div>
         <div class="fg">
           <div class="fl">ปลายทาง</div>
-          <select class="fi" id="dest_port" style="cursor:pointer">
+          <select class="fi" id="dest_port" style="cursor:pointer" onchange="toggleDestOther(this)">
             <option value="NANSHA">NANSHA</option>
             <option value="JIUJIANG, JIANGXI">JIUJIANG, JIANGXI</option>
             <option value="CAT LAI">CAT LAI</option>
             <option value="NINGBO">NINGBO</option>
             <option value="QINGDAO">QINGDAO</option>
+            <option value="__other__">— อื่นๆ (พิมพ์เอง) —</option>
           </select>
+          <input class="fi" id="dest_port_other" type="text" placeholder="พิมพ์ปลายทาง..." style="display:none;margin-top:6px;text-transform:uppercase">
         </div>
         <div class="fg">
           <div class="fl">หมายเหตุ</div>
@@ -728,6 +730,28 @@ function onFixedCostChange() {
   FIXED = parseFloat(sel.value) || 20600;
   try { localStorage.setItem('fc_fixed_cost', String(FIXED)); } catch(e) {}
   calcAll();
+}
+
+/* toggle "ปลายทางอื่นๆ" text input */
+function toggleDestOther(sel) {
+  var inp = document.getElementById('dest_port_other');
+  if (!inp) return;
+  if (sel.value === '__other__') {
+    inp.style.display = 'block';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+  }
+}
+
+/* helper: อ่านค่าปลายทางที่ใช้จริง (ถ้าเลือกอื่นๆ ใช้ text input) */
+function getDestPort() {
+  var sel = document.getElementById('dest_port');
+  if (sel.value === '__other__') {
+    var custom = (document.getElementById('dest_port_other').value || '').trim().toUpperCase();
+    return custom || 'CUSTOM';
+  }
+  return sel.value;
 }
 
 /* โรงงานที่ไม่รวมกลุ่มเด็ดขาด แม้ราคาเท่ากัน */
@@ -1239,7 +1263,7 @@ function doPrint() {
   var fRm   = fUsd * usdRm;
   var fThb  = fRm * rmThb;
   var psName = getActivePS().name;
-  var destPort = document.getElementById('dest_port').value;
+  var destPort = getDestPort();
   var destNote = document.getElementById('dest_note').value.trim();
 
   var container = document.getElementById('print-pages');
@@ -1774,7 +1798,7 @@ function printQuote() {
   var ref     = document.getElementById('qt-ref').value.trim();
   var signer  = document.getElementById('qt-signer').value.trim();
   var note    = document.getElementById('qt-note').value.trim();
-  var dest    = document.getElementById('dest_port').value;
+  var dest    = getDestPort();
   var destNote= document.getElementById('dest_note').value.trim();
 
   /* รวม destination display */
