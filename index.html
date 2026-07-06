@@ -501,7 +501,10 @@ select.row-fi{cursor:pointer;appearance:none}
         </div>
         <div class="fg">
           <div class="fl">ค่าดำเนินการ (คงที่)</div>
-          <input class="fi ro" type="text" value="20,600 THB" readonly>
+          <select class="fi" id="fixed_cost" onchange="onFixedCostChange()" style="cursor:pointer">
+            <option value="20600">20,600 (มาตรฐาน)</option>
+            <option value="20976">20,976 (รถไฟ +6%)</option>
+          </select>
         </div>
         <div class="fg">
           <div class="fl">ปลายทาง</div>
@@ -718,6 +721,14 @@ var LOGGED_USER = '';
    DATA
 ====================================================== */
 var FIXED = 20600;
+
+/* toggle FIXED cost 20600 <=> 20976 (รถไฟ) */
+function onFixedCostChange() {
+  var sel = document.getElementById('fixed_cost');
+  FIXED = parseFloat(sel.value) || 20600;
+  try { localStorage.setItem('fc_fixed_cost', String(FIXED)); } catch(e) {}
+  calcAll();
+}
 
 /* โรงงานที่ไม่รวมกลุ่มเด็ดขาด แม้ราคาเท่ากัน */
 var noGroupFactories = [
@@ -1276,7 +1287,7 @@ function doPrint() {
       '<div class="pp-item"><label>RM / THB</label><span>' + rmThb.toFixed(2) + '</span></div>' +
       '<div class="pp-item"><label>ค่าระวางเรือ (USD)</label><span>' + fmt(fUsd) + '</span></div>' +
       '<div class="pp-item"><label>ค่าระวางเรือ (THB)</label><span>' + fmt(fThb) + '</span></div>' +
-      '<div class="pp-item"><label>ค่าดำเนินการ</label><span>' + fmt(FIXED) + '</span></div>' +
+      '<div class="pp-item"><label>' + (FIXED === 20976 ? 'ค่าดำเนินการ (รถไฟ)' : 'ค่าดำเนินการ') + '</label><span>' + fmt(FIXED) + '</span></div>' +
     '</div></div>' +
     '<table class="pp-sum-tbl">' +
       '<thead><tr>' +
@@ -1316,7 +1327,7 @@ function doPrint() {
       '</div></div>' +
       '<div class="pp-section"><div class="pp-sec-title">รายละเอียดต้นทุน</div>' +
         '<div class="pp-row"><span>ค่าระวางเรือ (THB)</span><span>' + fmt(fThb) + '</span></div>' +
-        '<div class="pp-row"><span>ค่าดำเนินการ</span><span>' + fmt(FIXED) + '</span></div>' +
+        '<div class="pp-row"><span>' + (FIXED === 20976 ? 'ค่าดำเนินการ (รถไฟ)' : 'ค่าดำเนินการ') + '</span><span>' + fmt(FIXED) + '</span></div>' +
         '<div class="pp-row"><span>ค่าขนส่งรถบรรทุก</span><span>' + (tr ? fmt(tr) : '—') + '</span></div>' +
         '<div class="pp-total"><span>รวมต้นทุน</span><span>' + fmt(cost) + '</span></div>' +
       '</div>' +
@@ -1687,6 +1698,17 @@ var _appInited = false;
 function initApp() {
   if (_appInited) return;
   _appInited = true;
+  /* restore saved FIXED cost from localStorage */
+  try {
+    var saved = localStorage.getItem('fc_fixed_cost');
+    if (saved) {
+      var sel = document.getElementById('fixed_cost');
+      if (sel && (saved === '20600' || saved === '20976')) {
+        sel.value = saved;
+        FIXED = parseFloat(saved);
+      }
+    }
+  } catch(e) {}
   loadStorage().then(function(){
     renderPSSelect();
     renderRefTable();

@@ -1,9 +1,49 @@
-<!DOCTYPE html>
+// ═══════════════════════════════════════════════════════════
+//  FREIGHT_CALC — HTML Report (matches web app's print page design)
+// ═══════════════════════════════════════════════════════════
+
+const FIXED_COST_THB = 20600;
+
+function fmt(n: number): string {
+  return Math.round(n).toLocaleString("en-US");
+}
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function thaiDate(d: Date): string {
+  const months = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
+    "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
+function renderReport(p: {
+  factory: string;
+  destination: string;
+  destNote: string;
+  sell: number;
+  freightUsd: number;
+  usdRm: number;
+  rmThb: number;
+  transport: number;
+  priceSet: string;
+  container: string;
+}): string {
+  const freightRm = p.freightUsd * p.usdRm;
+  const freightThb = freightRm * p.rmThb;
+  const cost = freightThb + FIXED_COST_THB + p.transport;
+  const profit = p.sell - cost;
+  const cls = profit > 0 ? "pos" : profit < 0 ? "neg" : "zero";
+  const label = profit > 0 ? "กำไร" : profit < 0 ? "ขาดทุน" : "เท่าทุน";
+  const dateStr = thaiDate(new Date());
+  const f = (s: string) => escapeHtml(s);
+
+  return `<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>รายงานคำนวณราคา - RCN Logistics</title>
+<title>${f(p.factory)} — รายงานคำนวณ</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -44,9 +84,6 @@ html,body{font-family:'IBM Plex Sans Thai',sans-serif;color:#111827;background:#
 .pdf-btn{background:#dc2626;color:#fff;border:none;padding:11px 22px;border-radius:8px;cursor:pointer;font-family:'IBM Plex Sans Thai',sans-serif;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(220,38,38,.4)}
 .pdf-btn:hover{background:#b91c1c}
 .pdf-btn:active{transform:scale(.97)}
-.note-box{background:#fefce8;border:1.5px solid #fde047;border-radius:10px;padding:14px 16px}
-.note-box .pp-sec-title{color:#854d0e}
-.note-box .note-text{font-size:13px;color:#713f12;line-height:1.6}
 @media print{
   body{background:#fff}.wrap{padding:0;max-width:none}.print-page{box-shadow:none;border-radius:0;padding:14mm}
   .pdf-bar{display:none}
@@ -60,62 +97,34 @@ html,body{font-family:'IBM Plex Sans Thai',sans-serif;color:#111827;background:#
     <div class="pdf-bar-label">📄 รายงานคำนวณราคา</div>
     <div class="pdf-bar-hint" id="pdf-hint">กดปุ่มแล้วเลือก "บันทึกเป็น PDF" / Save as PDF</div>
   </div>
-  <button class="pdf-btn" onclick="window.print()">📥 บันทึก PDF</button>
+  <button class="pdf-btn" onclick="savePDF()">📥 บันทึกเป็น PDF</button>
 </div>
-<div class="wrap"><div class="print-page" id="report"></div></div>
-
 <script>
-/* FIXED_COST อ่านจาก URL ?fixed= (20600 หรือ 20976) — default 20600 */
-
-function fmt(n){ return Math.round(n).toLocaleString('en-US'); }
-function escapeHtml(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-function thaiDate(d){
-  const m=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-  return d.getDate()+' '+m[d.getMonth()]+' '+(d.getFullYear()+543);
-}
-
+function savePDF(){ window.print(); }
+// platform-aware hint
 (function(){
-  const sp = new URLSearchParams(location.search);
-  const p = {
-    factory: sp.get('factory') || '(ไม่ระบุ)',
-    destination: sp.get('destination') || 'NANSHA',
-    destNote: sp.get('dest_note') || '',
-    sell: parseFloat(sp.get('sell')||'0'),
-    freightUsd: parseFloat(sp.get('freight_usd')||'0'),
-    usdRm: parseFloat(sp.get('usd_rm')||'4.5'),
-    rmThb: parseFloat(sp.get('rm_thb')||'8.3'),
-    transport: parseFloat(sp.get('transport')||'0'),
-    priceSet: sp.get('price_set') || '',
-    container: sp.get('container') || '',
-  };
-
-  /* fixed cost: 20600 มาตรฐาน / 20976 รถไฟ (+6%) */
-  const rawFixed = parseFloat(sp.get('fixed')||'20600');
-  const FIXED_COST = (rawFixed === 20976 || rawFixed === 20600) ? rawFixed : 20600;
-  const isRail = FIXED_COST === 20976;
-  const fixedLabel = isRail ? 'ค่าดำเนินการ (รถไฟ)' : 'ค่าดำเนินการ';
-
-  document.title = p.factory + ' — รายงานคำนวณ';
-
-  const freightRm = p.freightUsd * p.usdRm;
-  const freightThb = freightRm * p.rmThb;
-  const cost = freightThb + FIXED_COST + p.transport;
-  const profit = p.sell - cost;
-  const cls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : 'zero';
-  const label = profit > 0 ? 'กำไร' : profit < 0 ? 'ขาดทุน' : 'เท่าทุน';
-  const dateStr = thaiDate(new Date());
-  const f = escapeHtml;
-
-  let html = `
+  var ua = navigator.userAgent;
+  var hint = document.getElementById('pdf-hint');
+  if(/iPhone|iPad|iPod/.test(ua)){
+    hint.textContent = 'กดปุ่ม → เลือก "บันทึกเป็น PDF" → "บันทึกในไฟล์"';
+  } else if(/Android/.test(ua)){
+    hint.textContent = 'กดปุ่ม → เลือก "บันทึกเป็น PDF" ในเครื่องพิมพ์';
+  }
+})();
+</script>
+<div class="wrap">
+  <div class="print-page">
     <div class="pp-header">
-      <div><div class="pp-logo">Freight Price Calculator</div></div>
+      <div>
+        <div class="pp-logo">Freight Price Calculator</div>
+      </div>
       <div class="pp-sub" style="text-align:right">
         RCN Logistics · ปลายทาง: ${f(p.destination)}${p.priceSet ? ' · ชุดราคา: ' + f(p.priceSet) : ''}
       </div>
     </div>
+
     <div class="pp-factory">${f(p.factory)} , ${f(p.destination)}${p.destNote ? ' (' + f(p.destNote) + ')' : ''}</div>
+
     <div class="pp-section">
       <div class="pp-sec-title">อัตราแลกเปลี่ยน &amp; ค่าระวาง</div>
       <div class="pp-grid">
@@ -127,48 +136,60 @@ function thaiDate(d){
         <div class="pp-item"><label>ค่าขนส่ง (THB)</label><span>${p.transport ? fmt(p.transport) : '—'}</span></div>
       </div>
     </div>
+
     <div class="pp-section">
       <div class="pp-sec-title">รายละเอียดต้นทุน</div>
       <div class="pp-row"><span>ค่าระวางเรือ (THB)</span><span>${fmt(freightThb)}</span></div>
-      <div class="pp-row"><span>${fixedLabel}</span><span>${fmt(FIXED_COST)}</span></div>
+      <div class="pp-row"><span>ค่าดำเนินการ</span><span>${fmt(FIXED_COST_THB)}</span></div>
       <div class="pp-row"><span>ค่าขนส่งรถบรรทุก</span><span>${p.transport ? fmt(p.transport) : '—'}</span></div>
       <div class="pp-total"><span>รวมต้นทุน</span><span>${fmt(cost)}</span></div>
-    </div>`;
+    </div>
 
-  if (p.sell > 0) {
-    html += `
+    ${p.sell > 0 ? `
     <div class="pp-section sell-box">
       <div class="pp-sec-title">ราคาขายลูกค้า</div>
       <div class="sell-num">${fmt(p.sell)} <small>THB</small></div>
     </div>
+
     <div class="pp-profit-box ${cls}">
       <div class="pp-profit-label">${label}</div>
       <div class="pp-profit-val ${cls}">${profit >= 0 ? '+' : ''}${fmt(profit)} THB</div>
-    </div>`;
-  } else {
-    html += `
-    <div class="pp-section note-box">
-      <div class="pp-sec-title">หมายเหตุ</div>
-      <div class="note-text">
-        ⓘ รายงานนี้แสดงเฉพาะ <strong>ต้นทุน</strong> — ยังไม่ได้กรอกราคาขาย<br>
-        คำนวณกำไร/ขาดทุน: ส่งข้อความใหม่ใน LINE เช่น "คำนวณ ${f(p.factory)} 35000"
+    </div>
+    ` : `
+    <div class="pp-section" style="background:#fefce8;border:1.5px solid #fde047">
+      <div class="pp-sec-title" style="color:#854d0e">หมายเหตุ</div>
+      <div style="font-size:13px;color:#713f12;line-height:1.6">
+        ⓘ รายงานนี้แสดงเฉพาะ <strong>ต้นทุน</strong> เนื่องจากยังไม่ได้กรอกราคาขาย<br>
+        หากต้องการคำนวณกำไร/ขาดทุน — ส่งข้อความใหม่พร้อมราคาขาย เช่น "คำนวณ ${f(p.factory)} 35000"
       </div>
-    </div>`;
-  }
+    </div>
+    `}
 
-  html += `<div class="pp-date">พิมพ์เมื่อ ${f(dateStr)}${p.container ? ' · ตู้ที่ ' + f(p.container) : ''}</div>`;
-
-  document.getElementById('report').innerHTML = html;
-
-  // platform-aware PDF hint
-  const ua = navigator.userAgent;
-  const hint = document.getElementById('pdf-hint');
-  if (/iPhone|iPad|iPod/.test(ua)) {
-    hint.textContent = 'กดปุ่ม → เลือก "บันทึกเป็น PDF" → "บันทึกในไฟล์"';
-  } else if (/Android/.test(ua)) {
-    hint.textContent = 'กดปุ่ม → เลือก "บันทึกเป็น PDF" ในเครื่องพิมพ์';
-  }
-})();
-</script>
+    <div class="pp-date">พิมพ์เมื่อ ${f(dateStr)}${p.container ? ' · ตู้ที่ ' + f(p.container) : ''}</div>
+  </div>
+</div>
 </body>
-</html>
+</html>`;
+}
+
+Deno.serve((req: Request) => {
+  if (req.method !== "GET") return new Response("Method not allowed", { status: 405 });
+  try {
+    const sp = new URL(req.url).searchParams;
+    const html = renderReport({
+      factory: sp.get("factory") || "(ไม่ระบุ)",
+      destination: sp.get("destination") || "NANSHA",
+      destNote: sp.get("dest_note") || "",
+      sell: parseFloat(sp.get("sell") || "0"),
+      freightUsd: parseFloat(sp.get("freight_usd") || "0"),
+      usdRm: parseFloat(sp.get("usd_rm") || "4.5"),
+      rmThb: parseFloat(sp.get("rm_thb") || "8.3"),
+      transport: parseFloat(sp.get("transport") || "0"),
+      priceSet: sp.get("price_set") || "",
+      container: sp.get("container") || "",
+    });
+    return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  } catch (e) {
+    return new Response(`Error: ${(e as Error).message}`, { status: 500 });
+  }
+});
